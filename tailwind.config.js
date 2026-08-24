@@ -4,6 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
     './modules/mes/**/*.{js,ts,jsx,tsx}', // 添加此行 - MES组件路径
+    './modules/ocap/**/*.{js,ts,jsx,tsx}', // OCAP组件路径
   ],
   theme: {
     extend: {
