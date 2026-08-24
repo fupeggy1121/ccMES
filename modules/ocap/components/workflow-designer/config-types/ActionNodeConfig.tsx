@@ -1,5 +1,6 @@
 // src/components/workflow-designer/config-types/ActionNodeConfig.tsx
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Node as RFNode, Edge as RFEdge } from 'reactflow';
 import { WorkflowNodeData } from '../../../types/workflow';
 import { Plus, Trash2, ChevronDown, ChevronUp, Users, Mail, X, FileText, ExternalLink, HelpCircle } from 'lucide-react';
@@ -77,15 +78,13 @@ const ActionNodeConfig: React.FC<ActionNodeConfigProps> = ({ node, onUpdateNode,
           ) : formTemplates.length === 0 ? (
             <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
               <p className="text-sm text-gray-600 mb-2">暂无可用表单模版，请先创建并发布模版</p>
-              <a
-                href="/form-templates/${selectedTemplate.id}/preview"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/form-templates"
                 className="text-sm text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center"
               >
                 前往创建表单模版
                 <ExternalLink className="w-3 h-3 ml-1" />
-              </a>
+              </Link>
             </div>
           ) : (
             <>
@@ -131,15 +130,13 @@ const ActionNodeConfig: React.FC<ActionNodeConfigProps> = ({ node, onUpdateNode,
                     </div>
                   </div>
                   <div className="flex items-center space-x-3 pt-2 border-t border-gray-200">
-                    <a
-                      href={`/form-templates/${selectedTemplate.id}/preview`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Link
+                      to={`/form-templates/${selectedTemplate.id}/preview`}
                       className="text-xs text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center"
                     >
                       查看详情
                       <ExternalLink className="w-3 h-3 ml-1" />
-                    </a>
+                    </Link>
                     <button
                       type="button"
                       onClick={() => {

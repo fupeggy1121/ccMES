@@ -205,7 +205,7 @@ const WorkflowDesignerPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="text-gray-500 text-lg">加载模板中...</div>
         </div>
@@ -222,7 +222,7 @@ const WorkflowDesignerPage = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-full flex flex-col">
       {/* 页头 */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-start justify-between w-full"> {/* Changed to items-start and w-full */}

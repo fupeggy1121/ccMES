@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { FormTemplate, FormTemplateCategory } from '../../types/form';
 import { categoryConfigs } from '../../data/formTemplateRegistry';
@@ -10,6 +11,7 @@ interface CreateFormTemplateDialogProps {
 }
 
 const CreateFormTemplateDialog = ({ isOpen, onClose, onCreate }: CreateFormTemplateDialogProps) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     category: 'custom' as FormTemplateCategory,
@@ -51,7 +53,7 @@ const CreateFormTemplateDialog = ({ isOpen, onClose, onCreate }: CreateFormTempl
     setErrors({});
     onClose();
 
-    window.location.href = `/form-templates/${newTemplate.id}/edit`;
+    navigate(`/form-templates/${newTemplate.id}/edit`);
   };
 
   const handleClose = () => {
