@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>生产工单页面功能说明</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f4f6fb;
+      color: #1a2236;
+      line-height: 1.7;
+      padding: 40px 20px 80px;
+    }
+
+    /* ── 页面容器 ── */
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* ── 封面 ── */
+    .cover {
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #60a5fa 100%);
+      border-radius: 16px;
+      padding: 48px 40px;
+      color: #fff;
+      margin-bottom: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::after {
+      content: '';
+      position: absolute;
+      right: -60px; top: -60px;
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.08);
+    }
+    .cover h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .cover .sub { font-size: 15px; opacity: .85; }
+    .cover .meta { margin-top: 20px; display: flex; gap: 24px; flex-wrap: wrap; }
+    .cover .meta span {
+      background: rgba(255,255,255,.18);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 13px;
+    }
+
+    /* ── 章节卡片 ── */
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 28px;
+      border-bottom: 1px solid #eef1f7;
+    }
+    .card-header .icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .icon-blue   { background: #dbeafe; }
+    .icon-green  { background: #d1fae5; }
+    .icon-purple { background: #ede9fe; }
+    .icon-amber  { background: #fef3c7; }
+    .card-header h2 { font-size: 17px; font-weight: 700; color: #1a2236; }
+    .card-header .badge {
+      margin-left: auto;
+      background: #eff6ff;
+      color: #2563eb;
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid #bfdbfe;
+    }
+    .card-body { padding: 24px 28px; }
+
+    /* ── 分节标题 ── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #6b7280;
+      margin: 20px 0 10px;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    /* ── 文本 ── */
+    p { font-size: 14px; color: #374151; margin-bottom: 8px; }
+    .muted { color: #6b7280; font-size: 13px; }
+
+    /* ── 步骤流程 ── */
+    .steps { list-style: none; padding: 0; }
+    .steps li {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px dashed #f0f1f5;
+      font-size: 14px;
+      color: #374151;
+    }
+    .steps li:last-child { border-bottom: none; }
+    .step-num {
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+
+    /* ── 两列布局 ── */
+    .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 600px) { .cols2 { grid-template-columns: 1fr; } }
+
+    /* ── info / warning / tip 横幅 ── */
+    .banner {
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 13px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .banner-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .banner-blue   { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1d4ed8; }
+    .banner-green  { background: #f0fdf4; border-left: 4px solid #22c55e; color: #15803d; }
+    .banner-amber  { background: #fffbeb; border-left: 4px solid #f59e0b; color: #b45309; }
+
+    /* ── 表格 ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead tr { background: #f8fafc; }
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 700;
+      color: #4b5563;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #f0f1f5;
+      color: #374151;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafbff; }
+
+    /* ── 标签 ── */
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 2px 2px 2px 0;
+    }
+    .tag-blue   { background: #dbeafe; color: #1d4ed8; }
+    .tag-green  { background: #d1fae5; color: #065f46; }
+    .tag-purple { background: #ede9fe; color: #5b21b6; }
+    .tag-gray   { background: #f3f4f6; color: #4b5563; }
+    .tag-amber  { background: #fef3c7; color: #92400e; }
+
+    /* ── 参数组列表 ── */
+    .param-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .param-groups { grid-template-columns: 1fr; } }
+    .param-group {
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 14px 16px;
+      border: 1px solid #e5e7eb;
+    }
+    .param-group h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #2563eb;
+      margin-bottom: 8px;
+    }
+    .param-group ul { list-style: none; padding: 0; }
+    .param-group li { font-size: 13px; color: #374151; padding: 2px 0; }
+    .param-group li::before { content: '·  '; color: #9ca3af; }
+
+    /* ── 操作按钮示意 ── */
+    .btn-demo {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      margin: 3px 4px;
+      cursor: default;
+    }
+    .btn-green  { background: #16a34a; color: #fff; }
+    .btn-blue   { background: #2563eb; color: #fff; }
+    .btn-gray   { background: #e5e7eb; color: #6b7280; }
+    .btn-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .6; }
+
+    /* ── 页脚 ── */
+    footer {
+      text-align: center;
+      margin-top: 48px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 封面 -->
+  <div class="cover">
+    <h1>生产工单页面功能说明</h1>
+    <p class="sub">需求说明 · 功能使用指南</p>
+    <div class="meta">
+      <span>📅 2026-07-08</span>
+      <span>🗂 模块：生产工单 / ProductionPlan</span>
+      <span>🔖 版本：v1.1</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       一、需求背景
+  ════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-amber">📋</div>
+      <h2>一、需求背景</h2>
+    </div>
+    <div class="card-body">
+      <p>生产工单页面原有的<strong>备料单</strong>与<strong>原料投料</strong>流程存在以下不足：</p>
+      <br/>
+      <div class="cols2">
+        <div>
+          <div class="section-title">备料单痛点</div>
+          <ul class="steps">
+            <li><div class="step-num">!</div>已备料批次仅展示入库状态，无法直接查看衬底片的具体来料检测参数（偏角、厚度、电阻率等），质量核查需要额外跳转系统。</li>
+          </ul>
+        </div>
+        <div>
+          <div class="section-title">投料表单痛点</div>
+          <ul class="steps">
+            <li><div class="step-num">!</div>基本信息仅有工单号/操作员/日期，缺少投料设备选择，无法追溯物料与设备的对应关系。</li>
+            <li><div class="step-num">!</div>添加投料物料时（选择线边仓物料），无法在选料界面快速查看衬底来料参数，需来回切换页面。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       二、功能清单
+  ════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-blue">✨</div>
+      <h2>二、本次新增功能清单</h2>
+      <div class="badge">4 项</div>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>功能</th>
+            <th>所在页面</th>
+            <th>类型</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>F-01</td>
+            <td>备料单「查看来料参数」按钮</td>
+            <td>工单备料单 → 已备料批次区域</td>
+            <td><span class="tag tag-blue">新增按钮</span></td>
+          </tr>
+          <tr>
+            <td>F-02</td>
+            <td>投料表单新增「投料设备」下拉框</td>
+            <td>原料投料 → 基本信息</td>
+            <td><span class="tag tag-green">新增字段</span></td>
+          </tr>
+          <tr>
+            <td>F-03</td>
+            <td>基本信息改为 3 列布局</td>
+            <td>原料投料 → 基本信息</td>
+            <td><span class="tag tag-gray">布局调整</span></td>
+          </tr>
+          <tr>
+            <td>F-04</td>
+            <td>选择线边仓物料「查看来料参数」按钮</td>
+            <td>原料投料 → 选择线边仓物料弹窗</td>
+            <td><span class="tag tag-blue">新增按钮</span></td>
+          </tr>
+          <tr>
+            <td>F-05</td>
+            <td>来料参数弹窗（含多选筛选器）</td>
+            <td>通用弹窗组件</td>
+            <td><span class="tag tag-purple">新增组件</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       三、功能详细说明
+  ════════════════════════════════════════════ -->
+
+  <!-- F-01 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-blue">🔍</div>
+      <h2>F-01 &nbsp;备料单 — 查看来料参数</h2>
+      <div class="badge">备料单</div>
+    </div>
+    <div class="card-body">
+
+      <div class="section-title">位置</div>
+      <p>工单备料单弹窗 → 右侧内容区 → <strong>「已备料物料批次 - XX站」</strong>区域顶部操作行</p>
+      <br/>
+
+      <div class="section-title">按钮示意</div>
+      <p>
+        <span class="btn-demo btn-green"><span class="btn-dot"></span>入库 (2)</span>
+        <span class="btn-demo btn-blue">🔍 查看来料参数</span>
+        <span class="muted">← 新增按钮，位于「入库」右侧</span>
+      </p>
+      <br/>
+
+      <div class="section-title">使用步骤</div>
+      <ul class="steps">
+        <li><div class="step-num">1</div>打开某工单的备料单，在左侧选择对应工艺站点。</li>
+        <li><div class="step-num">2</div>在右侧已备料批次列表中，勾选一条或多条批次（支持全选当前页）。</li>
+        <li><div class="step-num">3</div>「查看来料参数」按钮变为蓝色可点击状态。</li>
+        <li><div class="step-num">4</div>点击按钮，弹出来料参数详情弹窗，展示所选批次对应衬底片的各项检测参数。</li>
+      </ul>
+      <br/>
+
+      <div class="banner banner-amber">
+        <span class="banner-icon">⚠️</span>
+        未勾选任何批次时，按钮保持灰色禁用状态，不可点击。
+      </div>
+    </div>
+  </div>
+
+  <!-- F-02 & F-03 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-green">⚙️</div>
+      <h2>F-02 / F-03 &nbsp;投料表单 — 设备选择 & 3 列布局</h2>
+      <div class="badge">原料投料</div>
+    </div>
+    <div class="card-body">
+
+      <div class="section-title">布局变更（F-03）</div>
+      <p>基本信息区域从原来的 <strong>4 列</strong> 调整为 <strong>3 列</strong> 排列，各字段分布如下：</p>
+      <br/>
+      <table>
+        <thead><tr><th>第 1 列</th><th>第 2 列</th><th>第 3 列</th></tr></thead>
+        <tbody>
+          <tr><td>工单号（只读）</td><td>投料设备（下拉）<span class="tag tag-green" style="margin-left:6px">新增</span></td><td>操作员</td></tr>
+          <tr><td>投料日期（只读）</td><td colspan="2">备注说明（横跨 2 列）</td></tr>
+        </tbody>
+      </table>
+      <br/>
+
+      <div class="section-title">投料设备下拉框（F-02）</div>
+      <p>工单号右侧新增「<strong>投料设备</strong>」下拉单选框，用于记录本次投料使用的生产设备。</p>
+      <br/>
+      <p>可选设备列表：</p>
+      <div style="margin: 8px 0;">
+        <span class="tag tag-blue">MOCVD-01</span>
+        <span class="tag tag-blue">MOCVD-02</span>
+        <span class="tag tag-blue">MOCVD-03</span>
+        <span class="tag tag-purple">MBE-01</span>
+        <span class="tag tag-purple">MBE-02</span>
+        <span class="tag tag-amber">HVPE-01</span>
+      </div>
+      <br/>
+
+      <div class="banner banner-blue">
+        <span class="banner-icon">ℹ️</span>
+        设备选择为可选字段，不影响投料提交。后续可根据实际设备台账动态配置选项。
+      </div>
+    </div>
+  </div>
+
+  <!-- F-04 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-purple">📦</div>
+      <h2>F-04 &nbsp;选择线边仓物料 — 查看来料参数</h2>
+      <div class="badge">投料 · 选料弹窗</div>
+    </div>
+    <div class="card-body">
+
+      <div class="section-title">位置</div>
+      <p>原料投料弹窗 → 点击「添加」→ 弹出「<strong>选择线边仓物料</strong>」表单页 → 搜索框右侧</p>
+      <br/>
+
+      <div class="section-title">使用步骤</div>
+      <ul class="steps">
+        <li><div class="step-num">1</div>在原料投料表单中，点击「添加」按钮打开线边仓物料选择弹窗。</li>
+        <li><div class="step-num">2</div>通过左侧分类树筛选物料类型，或使用搜索框精确查找衬底片。</li>
+        <li><div class="step-num">3</div>勾选一片或多片衬底后，搜索框右侧的「查看来料参数」按钮激活。</li>
+        <li><div class="step-num">4</div>点击按钮，弹出来料参数弹窗，可在参数确认后关闭，继续完成物料选择。</li>
+      </ul>
+      <br/>
+
+      <div class="banner banner-green">
+        <span class="banner-icon">✅</span>
+        查看来料参数弹窗不会影响已勾选的物料状态，关闭后仍保留当前选中列表。
+      </div>
+    </div>
+  </div>
+
+  <!-- F-05 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-blue">📊</div>
+      <h2>F-05 &nbsp;来料参数弹窗</h2>
+      <div class="badge">通用组件</div>
+    </div>
+    <div class="card-body">
+
+      <div class="section-title">弹窗说明</div>
+      <p>所有「查看来料参数」按钮共用同一个弹窗组件 <code>IncomingMaterialParamsModal</code>。以表格形式展示每片衬底的检测参数，行为衬底片，列为参数项。</p>
+      <br/>
+
+      <div class="section-title">参数筛选器</div>
+      <p>右上角「<strong>筛选参数项</strong>」多选下拉器，支持按需选择展示哪些列：</p>
+      <br/>
+      <table>
+        <thead><tr><th>操作</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>全选</td><td>展示全部 32 个参数列</td></tr>
+          <tr><td>全不选</td><td>清空所有列（表格仅剩序号和编码列）</td></tr>
+          <tr><td>重置默认</td><td>恢复 7 个默认常用参数列</td></tr>
+          <tr><td>按组勾选</td><td>点击组名可整组一次性选择/取消选择</td></tr>
+          <tr><td>单项勾选</td><td>展开分组后可逐项勾选</td></tr>
+        </tbody>
+      </table>
+      <br/>
+
+      <div class="section-title">默认展示参数（7 项）</div>
+      <div style="margin-bottom:16px">
+        <span class="tag tag-blue">偏角 (°)</span>
+        <span class="tag tag-blue">厚度 (μm)</span>
+        <span class="tag tag-blue">电阻率 (Ω·cm)</span>
+        <span class="tag tag-blue">翘曲度 (μm)</span>
+        <span class="tag tag-blue">粗糙度 Ra (nm)</span>
+        <span class="tag tag-blue">晶向</span>
+        <span class="tag tag-blue">等级</span>
+      </div>
+
+      <div class="section-title">全部 32 个参数项（按组）</div>
+      <div class="param-groups">
+        <div class="param-group">
+          <h4>基础几何（7 项）</h4>
+          <ul>
+            <li>直径 (mm)</li>
+            <li>厚度 (μm)</li>
+            <li>TTV (μm)</li>
+            <li>弯曲度 Bow (μm)</li>
+            <li>翘曲度 Warp (μm)</li>
+            <li>崩边宽度 (μm)</li>
+            <li>倒角角度 (°)</li>
+          </ul>
+        </div>
+        <div class="param-group">
+          <h4>晶向（4 项）</h4>
+          <ul>
+            <li>晶向</li>
+            <li>偏角 (°)</li>
+            <li>偏角方向</li>
+            <li>XRC FWHM (arcsec)</li>
+          </ul>
+        </div>
+        <div class="param-group">
+          <h4>电学（5 项）</h4>
+          <ul>
+            <li>掺杂类型</li>
+            <li>电阻率 (Ω·cm)</li>
+            <li>载流子浓度 (cm⁻³)</li>
+            <li>迁移率 (cm²/Vs)</li>
+            <li>载流子寿命 (μs)</li>
+          </ul>
+        </div>
+        <div class="param-group">
+          <h4>晶体质量（4 项）</h4>
+          <ul>
+            <li>蚀坑密度 EPD (cm⁻²)</li>
+            <li>位错密度 (cm⁻²)</li>
+            <li>堆垛层错密度 (cm⁻¹)</li>
+            <li>微管密度 (cm⁻²)</li>
+          </ul>
+        </div>
+        <div class="param-group">
+          <h4>表面（6 项）</h4>
+          <ul>
+            <li>粗糙度 Ra (nm)</li>
+            <li>粗糙度 Rq (nm)</li>
+            <li>雾度 Haze (ppm)</li>
+            <li>光点缺陷 LLS (个)</li>
+            <li>划伤数 (条)</li>
+            <li>颗粒数 ≥0.2μm (个)</li>
+          </ul>
+        </div>
+        <div class="param-group">
+          <h4>外延/抛光（3 项）</h4>
+          <ul>
+            <li>外延面</li>
+            <li>抛光面</li>
+            <li>主平边方向</li>
+          </ul>
+        </div>
+        <div class="param-group">
+          <h4>其他（4 项）</h4>
+          <ul>
+            <li>等级</li>
+            <li>激光标记 ID</li>
+            <li>衬底类型</li>
+            <li>检验证书编号</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       四、操作流程图
+  ════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-purple">🔄</div>
+      <h2>四、操作流程示意</h2>
+    </div>
+    <div class="card-body">
+
+      <div class="section-title">流程一：备料单查看来料参数</div>
+      <ul class="steps">
+        <li><div class="step-num">1</div>生产工单列表 → 点击某工单行的「备料单」入口</li>
+        <li><div class="step-num">2</div>弹出工单备料单 → 左侧选择工艺站点（如「外延站」）</li>
+        <li><div class="step-num">3</div>右侧已备料批次列表 → 勾选目标批次（可多选）</li>
+        <li><div class="step-num">4</div>点击「查看来料参数」→ 弹出参数弹窗</li>
+        <li><div class="step-num">5</div>通过右上角筛选器按需调整展示列 → 查看参数 → 关闭</li>
+      </ul>
+      <br/>
+
+      <div class="section-title">流程二：投料时查看来料参数</div>
+      <ul class="steps">
+        <li><div class="step-num">1</div>生产工单列表 → 点击某工单行的「投料」入口</li>
+        <li><div class="step-num">2</div>弹出原料投料表单 → 在基本信息中选择「投料设备」</li>
+        <li><div class="step-num">3</div>点击「添加」→ 弹出「选择线边仓物料」弹窗</li>
+        <li><div class="step-num">4</div>在物料列表中勾选目标衬底片</li>
+        <li><div class="step-num">5</div>点击「查看来料参数」→ 核对偏角、厚度等关键参数</li>
+        <li><div class="step-num">6</div>确认参数符合要求 → 关闭参数弹窗 → 点击「确认」完成选料</li>
+        <li><div class="step-num">7</div>回到投料表单 → 确认投料</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       五、涉及文件
+  ════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-gray" style="background:#f3f4f6">📁</div>
+      <h2>五、涉及修改文件</h2>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr><th>文件路径</th><th>变更类型</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>src/components/ProductionPlan/<br/>IncomingMaterialParamsModal.tsx</code></td>
+            <td><span class="tag tag-green">新增</span></td>
+            <td>来料参数弹窗组件，含 32 项参数定义、确定性 mock 生成、多选筛选器</td>
+          </tr>
+          <tr>
+            <td><code>src/components/ProductionPlan/<br/>MaterialPickingForm.tsx</code></td>
+            <td><span class="tag tag-amber">修改</span></td>
+            <td>备料单：引入参数弹窗，入库按钮右侧新增「查看来料参数」按钮，修复批次过滤逻辑</td>
+          </tr>
+          <tr>
+            <td><code>src/components/ProductionPlan/<br/>MaterialFeedingForm.tsx</code></td>
+            <td><span class="tag tag-amber">修改</span></td>
+            <td>投料表单：新增设备下拉框，基本信息改为 3 列布局</td>
+          </tr>
+          <tr>
+            <td><code>src/components/ProductionPlan/<br/>MaterialSelectionModal.tsx</code></td>
+            <td><span class="tag tag-amber">修改</span></td>
+            <td>线边仓物料选择：搜索框右侧新增「查看来料参数」按钮及参数弹窗</td>
+          </tr>
+          <tr>
+            <td><code>src/hooks/useData.ts</code></td>
+            <td><span class="tag tag-amber">修改</span></td>
+            <td>备料批次 mock 数据升级：按真实物料类型生成衬底/化学品/气体批次，混合入库状态</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  生产工单功能说明文档 &nbsp;·&nbsp; 2026-07-08 &nbsp;·&nbsp; MES System
+</footer>
+</body>
+</html>
