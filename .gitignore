@@ -26,3 +26,6 @@ dist-ssr
 
 # superpowers SDD scratch
 .superpowers/
+
+# Claude Code native worktrees
+.claude/worktrees/
