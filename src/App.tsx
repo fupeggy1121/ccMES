@@ -14,6 +14,7 @@ import FinishedProductInboundModule from './components/FinishedProduct/FinishedP
 import BatchOperationsModule from './components/BatchOperations/BatchOperationsModule';
 import MRBManagement from './components/MRB/MRBManagement';
 import ProductModelManagement from './components/ProductModel/ProductModelManagement';
+import { OcapApp } from '../modules/ocap';
 import { debounce } from 'lodash';
 
 
@@ -117,6 +118,8 @@ function App() {
         return <MRBManagement />;
       case 'product-model-management-external':
         return <ProductModelManagement />;
+      case 'ocap-quality':
+        return <OcapApp />;
       default:
         console.warn(`未知的子模块: ${activeSubModule}`);
         return null;

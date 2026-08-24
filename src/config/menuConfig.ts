@@ -20,6 +20,7 @@ import {
   Tag,
   History,
   ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react';
 
 // Define menu item type
@@ -165,6 +166,7 @@ const originalMenuItems: MenuItem[] = [
       // { id: 'ontology-viewer', label: '本体可视化', icon: Network }
     ]
   },
+  { id: 'ocap-quality', label: '工单质量管理', icon: ShieldCheck },
 ];
 
 
