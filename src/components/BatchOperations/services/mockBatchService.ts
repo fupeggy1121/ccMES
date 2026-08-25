@@ -8,7 +8,7 @@
  * 将最后一行 export 改回 batchApiService 即可。
  */
 
-import { BatchData, SubBatchData, WaferData, WaferLossRecord } from '../types';
+import { BatchData, SubBatchData, WaferData, WaferLossRecord, PackagingRecord } from '../types';
 import { batchList } from '../data/batches';
 import { mockSubBatches } from '../data/mockSubBatches';
 import { mockStations, mockProducts, mockLossWafers, mockWafersBySubBatch } from '../data/mockWafers';
@@ -30,6 +30,8 @@ let _wafers: Record<string, WaferData[]> = Object.fromEntries(
 const _remarks: Record<string, string[]> = {};
 // 操作历史
 const _history: Record<string, any[]> = {};
+// 包装出货条码记录（按主批次 id 分组）
+const _packagingRecords: Record<string, PackagingRecord[]> = {};
 
 export const mockBatchService = {
 
@@ -118,6 +120,106 @@ export const mockBatchService = {
   },
 
   // ── 写操作 ────────────────────────────────
+
+  /** 获取指定主批次的包装出货条码记录 */
+  getPackagingRecords: async (batchId: string): Promise<PackagingRecord[]> => {
+    await delay();
+    return _packagingRecords[batchId] || [];
+  },
+
+  /** 生成包装出货条码记录（支持合箱），并把子批次状态置为已包装 */
+  createPackagingRecord: async (
+    batchId: string,
+    payload: {
+      sublotIds: string[];
+      carrierIds: string[];
+      packagingBarcode: string;
+      operator: string;
+      remark?: string;
+    }
+  ): Promise<{ success: boolean; record: PackagingRecord }> => {
+    await delay();
+    const subs = _subBatches[batchId] || [];
+    const totalQty = subs
+      .filter(s => payload.sublotIds.includes(s.sublotId))
+      .reduce((sum, s) => sum + s.totalQty, 0);
+
+    const record: PackagingRecord = {
+      id: `pkg-${Date.now()}`,
+      packagingBarcode: payload.packagingBarcode,
+      sublotIds: payload.sublotIds,
+      carrierIds: payload.carrierIds,
+      totalQty,
+      operator: payload.operator,
+      packagingTime: new Date().toISOString(),
+      remark: payload.remark,
+      printStatus: '未打印',
+      printCount: 0,
+      reprints: [],
+    };
+
+    if (!_packagingRecords[batchId]) _packagingRecords[batchId] = [];
+    _packagingRecords[batchId].push(record);
+
+    _subBatches[batchId] = subs.map(s =>
+      payload.sublotIds.includes(s.sublotId)
+        ? { ...s, packagingBarcode: record.packagingBarcode, packagingStatus: '已包装' as const, packagingTime: record.packagingTime }
+        : s
+    );
+
+    _addHistory(batchId, `包装：生成出货条码 ${record.packagingBarcode}`);
+    return { success: true, record };
+  },
+
+  /** 打印出货条码标签（mock） */
+  printPackagingRecord: async (batchId: string, recordId: string): Promise<{ success: boolean }> => {
+    await delay();
+    const records = _packagingRecords[batchId] || [];
+    const record = records.find(r => r.id === recordId);
+    if (!record) return { success: false };
+
+    record.printStatus = '已打印';
+    record.printCount += 1;
+
+    _subBatches[batchId] = (_subBatches[batchId] || []).map(s =>
+      record.sublotIds.includes(s.sublotId)
+        ? { ...s, printStatus: '已打印' as const, printCount: (s.printCount || 0) + 1 }
+        : s
+    );
+
+    _addHistory(batchId, `打印出货条码 ${record.packagingBarcode}`);
+    return { success: true };
+  },
+
+  /** 重打出货条码标签（需填重打原因） */
+  reprintPackagingRecord: async (
+    batchId: string,
+    recordId: string,
+    reason: string,
+    operator: string
+  ): Promise<{ success: boolean }> => {
+    await delay();
+    const records = _packagingRecords[batchId] || [];
+    const record = records.find(r => r.id === recordId);
+    if (!record) return { success: false };
+
+    record.printCount += 1;
+    record.reprints.push({
+      id: `reprint-${Date.now()}`,
+      reason,
+      operator,
+      time: new Date().toISOString(),
+    });
+
+    _subBatches[batchId] = (_subBatches[batchId] || []).map(s =>
+      record.sublotIds.includes(s.sublotId)
+        ? { ...s, printCount: (s.printCount || 0) + 1 }
+        : s
+    );
+
+    _addHistory(batchId, `重打出货条码 ${record.packagingBarcode}（原因：${reason}）`);
+    return { success: true };
+  },
 
   /** 出站确认 */
   confirmOutstation: async (batchId: string, _payload: any) => {
