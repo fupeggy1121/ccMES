@@ -39,6 +39,10 @@ export interface SubBatchData {
   stationName: string;
   equipment: string;
   packagingBarcode?: string; // 新增：包装条码，可选
+  packagingStatus?: '待包装' | '已包装'; // 新增：包装状态
+  packagingTime?: string; // 新增：包装完成时间
+  printStatus?: '未打印' | '已打印'; // 新增：标签打印状态
+  printCount?: number; // 新增：打印次数
 }
 
 export interface BatchDataItem {
@@ -147,6 +151,29 @@ export interface PackagingData {
   totalQty: number; // 包装数量
   status: 'Pending' | 'Packaged' | 'Printed'; // 包装状态
   timestamp: string; // 包装时间戳
+}
+
+// 新增：重打日志
+export interface ReprintLog {
+  id: string;
+  reason: string; // 重打原因，必填
+  operator: string; // 操作人
+  time: string; // 重打时间
+}
+
+// 新增：包装出货条码记录（支持合箱，一个出货条码可关联多个子批次）
+export interface PackagingRecord {
+  id: string;
+  packagingBarcode: string; // 出货条码（=包装条码）
+  sublotIds: string[]; // 关联子批次 sublotId 列表
+  carrierIds: string[]; // 关联片篮号列表，与 sublotIds 一一对应
+  totalQty: number; // 合计片数
+  operator: string; // 包装人员
+  packagingTime: string; // 包装时间
+  remark?: string;
+  printStatus: '未打印' | '已打印';
+  printCount: number;
+  reprints: ReprintLog[];
 }
 
 // src/types.ts (新增接口)
