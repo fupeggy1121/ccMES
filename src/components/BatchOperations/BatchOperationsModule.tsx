@@ -39,6 +39,7 @@ function BatchOperationsContent() {
     currentFormType,
     selectedBatch,
     displayedFormSubBatches,
+    setDisplayedFormSubBatches,
     cancellationReason,
     targetBatchCode,
     isMergeTargetModalOpen,
@@ -225,6 +226,7 @@ function BatchOperationsContent() {
           handleConfirmOutstation={batchOperationsContext.handleConfirmOutstation}
           currentBatchRemarks={currentBatchRemarks}
           currentFormType={currentFormType}
+          onSubBatchesUpdated={setDisplayedFormSubBatches}
         />
       </BatchOperationModal>
 

@@ -5,6 +5,7 @@ import EquipmentStationInfo from './EquipmentStationInfo';
 import BatchInfoDisplay from './BatchInfoDisplay';
 import WaferBasketReorganizationModule from './WaferBasketReorganizationModule';
 import ProcessParameters from './ProcessParameters';
+import PackagingSection from './PackagingSection';
 import { BatchData, SubBatchData, WaferData, CarrierData } from '../types';
 import { batchApiService } from '../services/batchApiService';
 
@@ -17,6 +18,7 @@ interface OutstationFormProps {
   handleConfirmOutstation: () => Promise<void>;
   currentBatchRemarks: string[];
   currentFormType: string;
+  onSubBatchesUpdated: (updated: SubBatchData[]) => void;
 }
 
 const OutstationForm: React.FC<OutstationFormProps> = ({
@@ -28,6 +30,7 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
   handleConfirmOutstation,
   currentBatchRemarks,
   currentFormType,
+  onSubBatchesUpdated,
 }) => {
   const [wafersForCurrentForm, setWafersForCurrentForm] = useState<WaferData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -170,6 +173,10 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
     );
   }
 
+  const isPackagingStation = selectedBatch?.station === '包装';
+  const hasUnprintedSubBatch = displayedFormSubBatches.some(sb => sb.printStatus !== '已打印');
+  const isOutstationBlockedByPrinting = isPackagingStation && hasUnprintedSubBatch;
+
   return (
     <>
         {/* Main content card */}
@@ -185,27 +192,38 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
             subBatches={displayedFormSubBatches}
           />
 
-          {/* 晶圆信息 Section - 只读展示当前子批次及片详情 */}
-          <WaferBasketReorganizationModule
-            initialSourceCarriers={sourceCarriersForReorganization}
-            initialWafers={wafersForCurrentForm}
-            selectedMode=""
-            onReorganizationStateChange={() => {}}
-            readOnlyWaferDetails={true}
-            hideTargetSection={true}
-            hideTransferButtons={true}
-            showBatchActionButtons={true}
-            disableBatchWaferTypeActions={true}
-            disableWaferTypeSelection={true}
-            isDefectEntryMode={false}
-          />
-          {/* 量测参数 Section */}
-          <div className="p-1 border-b">
-            <ProcessParameters
-              wafers={wafersForCurrentForm}
-              station={selectedBatch?.station || ''}
+          {isPackagingStation ? (
+            /* 包装打印 Section - 包装站点专属，替代晶圆信息/量测参数 */
+            <PackagingSection
+              selectedBatch={selectedBatch}
+              subBatches={displayedFormSubBatches}
+              onSubBatchesUpdated={onSubBatchesUpdated}
             />
-          </div>
+          ) : (
+            <>
+              {/* 晶圆信息 Section - 只读展示当前子批次及片详情 */}
+              <WaferBasketReorganizationModule
+                initialSourceCarriers={sourceCarriersForReorganization}
+                initialWafers={wafersForCurrentForm}
+                selectedMode=""
+                onReorganizationStateChange={() => {}}
+                readOnlyWaferDetails={true}
+                hideTargetSection={true}
+                hideTransferButtons={true}
+                showBatchActionButtons={true}
+                disableBatchWaferTypeActions={true}
+                disableWaferTypeSelection={true}
+                isDefectEntryMode={false}
+              />
+              {/* 量测参数 Section */}
+              <div className="p-1 border-b">
+                <ProcessParameters
+                  wafers={wafersForCurrentForm}
+                  station={selectedBatch?.station || ''}
+                />
+              </div>
+            </>
+          )}
 
           {/* 批次备注 Section */}
           {currentBatchRemarks.length > 0 && (
@@ -232,23 +250,28 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
             >
               取消
             </button>
-            <button
-              onClick={handleConfirmOutstationClick}
-              disabled={isConfirming}
-              className="inline-flex items-center px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isConfirming ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  处理中...
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  确认出站
-                </>
+            <div className="flex flex-col items-end">
+              <button
+                onClick={handleConfirmOutstationClick}
+                disabled={isConfirming || isOutstationBlockedByPrinting}
+                className="inline-flex items-center px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isConfirming ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    处理中...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    确认出站
+                  </>
+                )}
+              </button>
+              {isOutstationBlockedByPrinting && (
+                <p className="text-xs text-red-600 mt-1">还有未打印标签的子批次，无法确认出站</p>
               )}
-            </button>
+            </div>
           </div>
         </div>
     </>
