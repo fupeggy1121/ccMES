@@ -135,6 +135,12 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
   // 初始化 wafersForCurrentForm
   useEffect(() => {
     const loadWafers = async () => {
+      if (selectedBatch?.station === '包装') {
+        // 包装站点不使用晶圆级数据，跳过加载，避免每次 onSubBatchesUpdated 触发整个表单重挂载
+        setWafersForCurrentForm([]);
+        setLoading(false);
+        return;
+      }
       if (selectedBatch && displayedFormSubBatches.length > 0) {
         const subBatchUUIDs = displayedFormSubBatches.map(sb => sb.id);
         const fetchedWafers = await fetchWafersForSubBatches(subBatchUUIDs, selectedBatch.id);
@@ -174,7 +180,7 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
   }
 
   const isPackagingStation = selectedBatch?.station === '包装';
-  const hasUnprintedSubBatch = displayedFormSubBatches.some(sb => sb.printStatus !== '已打印');
+  const hasUnprintedSubBatch = displayedFormSubBatches.length === 0 || displayedFormSubBatches.some(sb => sb.printStatus !== '已打印');
   const isOutstationBlockedByPrinting = isPackagingStation && hasUnprintedSubBatch;
 
   return (

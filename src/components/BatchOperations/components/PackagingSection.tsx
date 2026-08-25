@@ -83,7 +83,7 @@ const PackagingSection: React.FC<PackagingSectionProps> = ({
     }
 
     const updated = pendingChecklist.map(item =>
-      item.carrierId === value ? { ...item, confirmed: true } : item
+      item.sublotId === target.sublotId ? { ...item, confirmed: true } : item
     );
     setPendingChecklist(updated);
     setScanError(null);
@@ -293,7 +293,7 @@ const PackagingSection: React.FC<PackagingSectionProps> = ({
           <h3 className="text-sm font-medium text-gray-700 mb-2">防呆确认：请依次扫描/输入实际片篮号</h3>
           <ul className="space-y-1 mb-3">
             {pendingChecklist.map(item => (
-              <li key={item.carrierId} className="text-sm flex items-center">
+              <li key={item.sublotId} className="text-sm flex items-center">
                 <span className={`inline-block w-4 h-4 mr-2 rounded-full text-center text-xs leading-4 ${item.confirmed ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
                   {item.confirmed ? '✓' : ''}
                 </span>

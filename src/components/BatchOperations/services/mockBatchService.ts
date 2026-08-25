@@ -175,19 +175,23 @@ export const mockBatchService = {
   printPackagingRecord: async (batchId: string, recordId: string): Promise<{ success: boolean }> => {
     await delay();
     const records = _packagingRecords[batchId] || [];
-    const record = records.find(r => r.id === recordId);
-    if (!record) return { success: false };
+    const idx = records.findIndex(r => r.id === recordId);
+    if (idx === -1) return { success: false };
 
-    record.printStatus = '已打印';
-    record.printCount += 1;
+    const updatedRecord: PackagingRecord = {
+      ...records[idx],
+      printStatus: '已打印',
+      printCount: records[idx].printCount + 1,
+    };
+    _packagingRecords[batchId] = records.map((r, i) => (i === idx ? updatedRecord : r));
 
     _subBatches[batchId] = (_subBatches[batchId] || []).map(s =>
-      record.sublotIds.includes(s.sublotId)
+      updatedRecord.sublotIds.includes(s.sublotId)
         ? { ...s, printStatus: '已打印' as const, printCount: (s.printCount || 0) + 1 }
         : s
     );
 
-    _addHistory(batchId, `打印出货条码 ${record.packagingBarcode}`);
+    _addHistory(batchId, `打印出货条码 ${updatedRecord.packagingBarcode}`);
     return { success: true };
   },
 
@@ -200,24 +204,31 @@ export const mockBatchService = {
   ): Promise<{ success: boolean }> => {
     await delay();
     const records = _packagingRecords[batchId] || [];
-    const record = records.find(r => r.id === recordId);
-    if (!record) return { success: false };
+    const idx = records.findIndex(r => r.id === recordId);
+    if (idx === -1) return { success: false };
 
-    record.printCount += 1;
-    record.reprints.push({
-      id: `reprint-${Date.now()}`,
-      reason,
-      operator,
-      time: new Date().toISOString(),
-    });
+    const updatedRecord: PackagingRecord = {
+      ...records[idx],
+      printCount: records[idx].printCount + 1,
+      reprints: [
+        ...records[idx].reprints,
+        {
+          id: `reprint-${Date.now()}`,
+          reason,
+          operator,
+          time: new Date().toISOString(),
+        },
+      ],
+    };
+    _packagingRecords[batchId] = records.map((r, i) => (i === idx ? updatedRecord : r));
 
     _subBatches[batchId] = (_subBatches[batchId] || []).map(s =>
-      record.sublotIds.includes(s.sublotId)
+      updatedRecord.sublotIds.includes(s.sublotId)
         ? { ...s, printCount: (s.printCount || 0) + 1 }
         : s
     );
 
-    _addHistory(batchId, `重打出货条码 ${record.packagingBarcode}（原因：${reason}）`);
+    _addHistory(batchId, `重打出货条码 ${updatedRecord.packagingBarcode}（原因：${reason}）`);
     return { success: true };
   },
 
