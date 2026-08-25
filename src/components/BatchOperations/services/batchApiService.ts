@@ -244,6 +244,38 @@ const _realBatchApiService = {
     }),
 
   /**
+   * 获取包装出货条码记录列表
+   */
+  getPackagingRecords: (batchId: string) =>
+    request(`/batch/${batchId}/packaging-records`),
+
+  /**
+   * 生成包装出货条码记录（支持合箱）
+   */
+  createPackagingRecord: (batchId: string, payload: any) =>
+    request(`/batch/${batchId}/packaging-records`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  /**
+   * 打印出货条码标签
+   */
+  printPackagingRecord: (batchId: string, recordId: string) =>
+    request(`/batch/${batchId}/packaging-records/${recordId}/print`, {
+      method: 'POST',
+    }),
+
+  /**
+   * 重打出货条码标签
+   */
+  reprintPackagingRecord: (batchId: string, recordId: string, reason: string, operator: string) =>
+    request(`/batch/${batchId}/packaging-records/${recordId}/reprint`, {
+      method: 'POST',
+      body: JSON.stringify({ reason, operator }),
+    }),
+
+  /**
    * 获取聚合晶圆数据
    * CRITICAL CHANGE: 在这里对返回的晶圆数据进行转换
    */
