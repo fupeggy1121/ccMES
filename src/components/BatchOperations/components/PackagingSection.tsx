@@ -1,10 +1,11 @@
 // src/components/BatchOperations/components/PackagingSection.tsx
 import React, { useEffect, useState } from 'react';
-import { Package } from 'lucide-react';
+import { Package, Printer, RotateCcw } from 'lucide-react';
 import { BatchData, SubBatchData, PackagingRecord } from '../types';
 import { batchApiService } from '../services/batchApiService';
 import { mockOperators } from '../data/mockOperators';
 import { generatePackagingBarcode } from '../utils/packagingBarcode';
+import BatchOperationModal from './BatchOperationModal';
 
 interface PackagingSectionProps {
   selectedBatch: BatchData | null;
@@ -34,6 +35,9 @@ const PackagingSection: React.FC<PackagingSectionProps> = ({
   const [barcodeForm, setBarcodeForm] = useState<{ packagingBarcode: string; operator: string; remark: string } | null>(null);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [reprintTarget, setReprintTarget] = useState<{ sublotId: string; recordId: string } | null>(null);
+  const [reprintReason, setReprintReason] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -132,6 +136,70 @@ const PackagingSection: React.FC<PackagingSectionProps> = ({
     }
   };
 
+  const handlePrintSelectedRecord = async () => {
+    if (!selectedRecordId || !batchId) return;
+    const record = records.find(r => r.id === selectedRecordId);
+    if (!record || record.printStatus === '已打印') return;
+
+    setIsPrinting(true);
+    try {
+      await batchApiService.printPackagingRecord(batchId, selectedRecordId);
+
+      console.log('--- 打印出货条码标签 ---');
+      console.log(`出货条码: ${record.packagingBarcode}`);
+      console.log(`子批次: ${record.sublotIds.join(', ')}`);
+      console.log(`片数: ${record.totalQty}`);
+      console.log('-----------------------');
+
+      setRecords(prev => prev.map(r =>
+        r.id === selectedRecordId ? { ...r, printStatus: '已打印' as const, printCount: r.printCount + 1 } : r
+      ));
+      onSubBatchesUpdated(subBatches.map(sb =>
+        record.sublotIds.includes(sb.sublotId)
+          ? { ...sb, printStatus: '已打印' as const, printCount: (sb.printCount || 0) + 1 }
+          : sb
+      ));
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  const handleOpenReprint = (sb: SubBatchData) => {
+    const record = records.find(r => r.sublotIds.includes(sb.sublotId));
+    if (!record) return;
+    setReprintTarget({ sublotId: sb.sublotId, recordId: record.id });
+    setReprintReason('');
+  };
+
+  const handleConfirmReprint = async () => {
+    if (!reprintTarget || !reprintReason.trim() || !batchId) return;
+    const operator = mockOperators[0]?.name || '';
+    const record = records.find(r => r.id === reprintTarget.recordId);
+    if (!record) return;
+
+    await batchApiService.reprintPackagingRecord(batchId, reprintTarget.recordId, reprintReason.trim(), operator);
+
+    console.log(`--- 重打标签：${record.packagingBarcode}，原因：${reprintReason.trim()} ---`);
+
+    setRecords(prev => prev.map(r =>
+      r.id === reprintTarget.recordId
+        ? {
+            ...r,
+            printCount: r.printCount + 1,
+            reprints: [...r.reprints, { id: `reprint-${r.printCount + 1}`, reason: reprintReason.trim(), operator, time: new Date().toISOString() }],
+          }
+        : r
+    ));
+    onSubBatchesUpdated(subBatches.map(sb =>
+      record.sublotIds.includes(sb.sublotId)
+        ? { ...sb, printCount: (sb.printCount || 0) + 1 }
+        : sb
+    ));
+
+    setReprintTarget(null);
+    setReprintReason('');
+  };
+
   return (
     <div className="p-6 border-b">
       <h2 className="text-base font-medium mb-4 text-gray-700">包装打印</h2>
@@ -149,6 +217,7 @@ const PackagingSection: React.FC<PackagingSectionProps> = ({
               <th className="py-2 px-4 text-left text-gray-700 font-medium">包装时间</th>
               <th className="py-2 px-4 text-center text-gray-700 font-medium">打印状态</th>
               <th className="py-2 px-4 text-center text-gray-700 font-medium">打印次数</th>
+              <th className="py-2 px-4 text-center text-gray-700 font-medium">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -180,11 +249,22 @@ const PackagingSection: React.FC<PackagingSectionProps> = ({
                     </span>
                   </td>
                   <td className="py-2 px-4 text-center">{sb.printCount || 0}</td>
+                  <td className="py-2 px-4 text-center">
+                    {sb.printStatus === '已打印' && (
+                      <button
+                        onClick={() => handleOpenReprint(sb)}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-700 bg-orange-100 rounded hover:bg-orange-200"
+                      >
+                        <RotateCcw className="w-3 h-3 mr-1" />
+                        重打
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">暂无数据</td>
+                <td colSpan={10} className="px-6 py-4 text-center text-sm text-gray-500">暂无数据</td>
               </tr>
             )}
           </tbody>
@@ -289,7 +369,25 @@ const PackagingSection: React.FC<PackagingSectionProps> = ({
         </div>
       )}
 
-      <h3 className="text-sm font-medium text-gray-700 mb-2">出货条码列表</h3>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-medium text-gray-700">出货条码列表</h3>
+        <button
+          onClick={handlePrintSelectedRecord}
+          disabled={
+            !selectedRecordId ||
+            isPrinting ||
+            records.find(r => r.id === selectedRecordId)?.printStatus === '已打印'
+          }
+          className={`inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium ${
+            selectedRecordId && records.find(r => r.id === selectedRecordId)?.printStatus !== '已打印'
+              ? 'bg-green-600 text-white hover:bg-green-700'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          <Printer className="w-4 h-4 mr-2" />
+          {isPrinting ? '打印中...' : '打印出货条码'}
+        </button>
+      </div>
       <div className="border rounded-lg overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -331,6 +429,38 @@ const PackagingSection: React.FC<PackagingSectionProps> = ({
           </tbody>
         </table>
       </div>
+
+      <BatchOperationModal
+        isOpen={!!reprintTarget}
+        title="重打标签"
+        onClose={() => setReprintTarget(null)}
+        maxWidth="max-w-md"
+      >
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">重打原因</label>
+            <textarea
+              value={reprintReason}
+              onChange={e => setReprintReason(e.target.value)}
+              rows={3}
+              className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              placeholder="如：标签污损、字迹模糊..."
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button onClick={() => setReprintTarget(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm">
+              取消
+            </button>
+            <button
+              onClick={handleConfirmReprint}
+              disabled={!reprintReason.trim()}
+              className={`px-4 py-2 rounded-md text-sm font-medium ${reprintReason.trim() ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+            >
+              确认重打
+            </button>
+          </div>
+        </div>
+      </BatchOperationModal>
     </div>
   );
 };
