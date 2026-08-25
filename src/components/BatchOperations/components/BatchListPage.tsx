@@ -438,9 +438,13 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
   };
 
   // 检查过站按钮是否可用
+  // 注：'加工中' 也需要放开——handleSelectBatch 已经支持把 '加工中' 状态的批次
+  // 路由到打标出站/各检验站点表单/包装出站表单，但此前这里没有对应放开，导致
+  // 这些站点在 UI 上永远无法通过"进/出站"按钮进入。
   const isPassStationEnabled = selectedMasterBatchId !== null &&
   (batchList.find(b => b.id === selectedMasterBatchId)?.status === '待出站' ||
-   batchList.find(b => b.id === selectedMasterBatchId)?.status === '待进站');
+   batchList.find(b => b.id === selectedMasterBatchId)?.status === '待进站' ||
+   batchList.find(b => b.id === selectedMasterBatchId)?.status === '加工中');
 
   // 检查出站按钮是否可用
   const isOutstationEnabled = selectedMasterBatchId !== null || checkedSubBatchIds.length > 0;
