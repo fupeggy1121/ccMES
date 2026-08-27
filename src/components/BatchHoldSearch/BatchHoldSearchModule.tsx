@@ -3,6 +3,8 @@ import { batchApiService } from '../BatchOperations/services/batchApiService';
 import { BatchData } from '../BatchOperations/types';
 import { buildCsvContent, downloadCsv } from '../BatchOperations/utils/csvExport';
 import BatchHoldModal from '../BatchOperations/components/BatchHoldModal';
+import BatchReleaseModal from '../BatchOperations/components/BatchReleaseModal';
+import { batchHoldService } from '../../services/batchHold/batchHoldService';
 
 const BatchHoldSearchModule: React.FC = () => {
   const [allBatches, setAllBatches] = useState<BatchData[]>([]);
@@ -17,11 +19,21 @@ const BatchHoldSearchModule: React.FC = () => {
 
   const [isHoldModalOpen, setIsHoldModalOpen] = useState(false);
 
+  // 批量解锁区块的状态
+  const [heldBatchIds, setHeldBatchIds] = useState<string[]>([]);
+  const [releaseCategoryFilter, setReleaseCategoryFilter] = useState('');
+  const [releaseCustomerFilter, setReleaseCustomerFilter] = useState('');
+  const [releaseProductCodeFilter, setReleaseProductCodeFilter] = useState('');
+  const [checkedReleaseBatchIds, setCheckedReleaseBatchIds] = useState<string[]>([]);
+  const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
+
   const loadBatches = async () => {
     setLoading(true);
     try {
       const data = await batchApiService.listBatches();
       setAllBatches(data);
+      const activeRecords = await batchHoldService.listActiveHoldRecords();
+      setHeldBatchIds(Array.from(new Set(activeRecords.map(r => r.batchId))));
     } finally {
       setLoading(false);
     }
@@ -52,6 +64,41 @@ const BatchHoldSearchModule: React.FC = () => {
       return true;
     });
   }, [allBatches, hasSearched, selectedEquipmentCodes, selectedIngotIds, startTime, endTime]);
+
+  const heldBatches = useMemo(
+    () => allBatches.filter(b => heldBatchIds.includes(b.id)),
+    [allBatches, heldBatchIds]
+  );
+
+  const releaseCategoryOptions = useMemo(
+    () => Array.from(new Set(heldBatches.map(b => b.productCategory).filter(Boolean))) as string[],
+    [heldBatches]
+  );
+  const releaseCustomerOptions = useMemo(
+    () => Array.from(new Set(heldBatches.map(b => b.customerName).filter(Boolean))) as string[],
+    [heldBatches]
+  );
+
+  const filteredHeldBatches = useMemo(() => {
+    return heldBatches.filter(b => {
+      if (releaseCategoryFilter && b.productCategory !== releaseCategoryFilter) return false;
+      if (releaseCustomerFilter && b.customerName !== releaseCustomerFilter) return false;
+      if (releaseProductCodeFilter && !b.productCode.toLowerCase().includes(releaseProductCodeFilter.toLowerCase())) return false;
+      return true;
+    });
+  }, [heldBatches, releaseCategoryFilter, releaseCustomerFilter, releaseProductCodeFilter]);
+
+  const toggleReleaseBatchChecked = (batchId: string) => {
+    setCheckedReleaseBatchIds(prev =>
+      prev.includes(batchId) ? prev.filter(id => id !== batchId) : [...prev, batchId]
+    );
+  };
+
+  const handleReleaseConfirmed = async () => {
+    setIsReleaseModalOpen(false);
+    setCheckedReleaseBatchIds([]);
+    await loadBatches();
+  };
 
   const handleSearch = () => setHasSearched(true);
 
@@ -220,6 +267,90 @@ const BatchHoldSearchModule: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* 批量解锁区 */}
+        <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
+          <h2 className="text-sm font-medium text-gray-700">批量解锁（当前所有已Hold批次，共 {heldBatches.length}）</h2>
+          <div className="grid grid-cols-4 gap-3">
+            <select
+              value={releaseCategoryFilter}
+              onChange={e => setReleaseCategoryFilter(e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+            >
+              <option value="">全部产品分类</option>
+              {releaseCategoryOptions.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <select
+              value={releaseCustomerFilter}
+              onChange={e => setReleaseCustomerFilter(e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+            >
+              <option value="">全部客户</option>
+              {releaseCustomerOptions.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={releaseProductCodeFilter}
+              onChange={e => setReleaseProductCodeFilter(e.target.value)}
+              placeholder="按料号搜索"
+              className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+            />
+            <button
+              onClick={() => setIsReleaseModalOpen(true)}
+              disabled={checkedReleaseBatchIds.length === 0}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                checkedReleaseBatchIds.length > 0
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              批量释放（{checkedReleaseBatchIds.length}）
+            </button>
+          </div>
+          <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 bg-gray-50 border-b w-8"></th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase border-b">批次编码</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase border-b">料号</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase border-b">产品分类</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase border-b">客户</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase border-b">站点</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredHeldBatches.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-sm">当前没有符合条件的Hold批次</td>
+                  </tr>
+                ) : (
+                  filteredHeldBatches.map(b => (
+                    <tr key={b.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={checkedReleaseBatchIds.includes(b.id)}
+                          onChange={() => toggleReleaseBatchChecked(b.id)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                      </td>
+                      <td className="px-3 py-2.5 font-medium text-gray-900">{b.batchCode}</td>
+                      <td className="px-3 py-2.5 text-gray-700">{b.productCode}</td>
+                      <td className="px-3 py-2.5 text-gray-700">{b.productCategory || '—'}</td>
+                      <td className="px-3 py-2.5 text-gray-700">{b.customerName || '—'}</td>
+                      <td className="px-3 py-2.5 text-gray-700">{b.stationName}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <BatchHoldModal
@@ -227,6 +358,12 @@ const BatchHoldSearchModule: React.FC = () => {
         batchIds={searchResults.map(b => b.id)}
         onClose={() => setIsHoldModalOpen(false)}
         onConfirmed={handleHoldConfirmed}
+      />
+      <BatchReleaseModal
+        isOpen={isReleaseModalOpen}
+        batchIds={checkedReleaseBatchIds}
+        onClose={() => setIsReleaseModalOpen(false)}
+        onConfirmed={handleReleaseConfirmed}
       />
     </div>
   );
