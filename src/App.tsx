@@ -121,8 +121,10 @@ function App() {
         return <MRBManagement />;
       case 'product-model-management-external':
         return <ProductModelManagement />;
-      case 'ocap-quality':
-        return <OcapApp />;
+      case 'ocap-work-orders':
+      case 'ocap-work-order-modeling':
+      case 'ocap-form-templates':
+        return <OcapApp activeSubModule={activeSubModule} />;
       default:
         console.warn(`未知的子模块: ${activeSubModule}`);
         return null;

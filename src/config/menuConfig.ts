@@ -168,7 +168,16 @@ const originalMenuItems: MenuItem[] = [
       // { id: 'ontology-viewer', label: '本体可视化', icon: Network }
     ]
   },
-  { id: 'ocap-quality', label: '工单质量管理', icon: ShieldCheck },
+  {
+    id: 'ocap-quality',
+    label: 'OCAP',
+    icon: ShieldCheck,
+    subItems: [
+      { id: 'ocap-work-orders', label: '工单管理', icon: ClipboardList },
+      { id: 'ocap-work-order-modeling', label: 'OCAP工单建模', icon: Settings },
+      { id: 'ocap-form-templates', label: '表单模版管理', icon: FileText },
+    ],
+  },
 ];
 
 
