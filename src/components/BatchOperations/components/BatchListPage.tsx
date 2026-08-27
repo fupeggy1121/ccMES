@@ -6,7 +6,9 @@ import MasterBatchTable from './MasterBatchTable';
 import SubBatchTable from './SubBatchTable';
 import BatchHoldModal from './BatchHoldModal';
 import BatchReleaseModal from './BatchReleaseModal';
-import { Clock, BookOpen } from 'lucide-react';
+import { batchHoldService } from '../../../services/batchHold/batchHoldService';
+import { HoldRecord } from '../../../services/batchHold/types';
+import { Clock, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface BatchListPageProps {
   onSelectBatch: (batch: BatchData) => void;
@@ -73,6 +75,9 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
   const [checkedMasterBatchIds, setCheckedMasterBatchIds] = useState<string[]>([]);
   const [isBatchHoldModalOpen, setIsBatchHoldModalOpen] = useState(false);
   const [isBatchReleaseModalOpen, setIsBatchReleaseModalOpen] = useState(false);
+  // 新增：选中批次的Hold记录查看面板
+  const [holdHistoryRecords, setHoldHistoryRecords] = useState<HoldRecord[]>([]);
+  const [isHoldHistoryExpanded, setIsHoldHistoryExpanded] = useState(false);
   const [displayedSubBatches, setDisplayedSubBatches] = useState<SubBatchData[]>([]);
   const [loadingSubBatches, setLoadingSubBatches] = useState<boolean>(false);
   const [isFinalSortingOverviewModalOpen, setIsFinalSortingOverviewModalOpen] = useState<boolean>(false);
@@ -209,6 +214,10 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
     setIsBatchReleaseModalOpen(false);
     setCheckedMasterBatchIds([]);
     await fetchBatches();
+    if (selectedMasterBatchId) {
+      const records = await batchHoldService.listHoldRecords(selectedMasterBatchId);
+      setHoldHistoryRecords(records);
+    }
   };
 
   // 处理主批次行点击
@@ -218,11 +227,14 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
     console.log('BatchListPage: Master batch selected:', batchId);
     setSelectedMasterBatchId(batchId);
     setLoadingSubBatches(true);
+    setIsHoldHistoryExpanded(false);
     try {
       const subBatches = await getSubBatchesForMaster(batchId);
       setDisplayedSubBatches(subBatches);
       console.log('Displayed subBatches for', batchId, ':', subBatches);
       setCheckedSubBatchIds([]);
+      const records = await batchHoldService.listHoldRecords(batchId);
+      setHoldHistoryRecords(records);
     } catch (error) {
       console.error('Failed to load sub-batches:', error);
       setDisplayedSubBatches([]);
@@ -650,6 +662,40 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
               <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-gray-700">{getSelectionDescription()}</p>
               </div>
+
+              {selectedMasterBatchId && holdHistoryRecords.length > 0 && (
+                <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setIsHoldHistoryExpanded(v => !v)}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                  >
+                    <span>Hold记录（{holdHistoryRecords.length}）</span>
+                    {isHoldHistoryExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                  {isHoldHistoryExpanded && (
+                    <div className="divide-y divide-gray-100 max-h-56 overflow-y-auto">
+                      {holdHistoryRecords.map(r => (
+                        <div key={r.id} className="px-3 py-2 text-xs space-y-0.5">
+                          <div className="flex items-center justify-between">
+                            <span className={`font-medium ${r.status === 'holding' ? 'text-red-600' : 'text-gray-500'}`}>
+                              {r.status === 'holding' ? '扣留中' : '已释放'}
+                            </span>
+                            <span className="text-gray-400">{r.holdSource === 'manual' ? '人工' : 'OCAP自动'}</span>
+                          </div>
+                          <p className="text-gray-700">{r.holdReasonCategory}：{r.holdReasonText}</p>
+                          <p className="text-gray-400">扣留：{r.holdBy} · {new Date(r.holdAt).toLocaleString()}</p>
+                          {r.status === 'released' && (
+                            <p className="text-gray-400">
+                              释放：{r.releaseBy} · {r.releaseAt ? new Date(r.releaseAt).toLocaleString() : ''}
+                              {r.releaseApprovalComment ? ` · 依据：${r.releaseApprovalComment}` : ''}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {activeTab === 'inProcess' ? (
                 <div className="grid grid-cols-2 gap-2">
