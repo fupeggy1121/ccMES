@@ -1,6 +1,6 @@
 // src/components/OutstationForm.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { X, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import EquipmentStationInfo from './EquipmentStationInfo';
 import BatchInfoDisplay from './BatchInfoDisplay';
 import WaferBasketReorganizationModule from './WaferBasketReorganizationModule';
@@ -29,7 +29,6 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
   handleBackToBatchList,
   handleConfirmOutstation,
   currentBatchRemarks,
-  currentFormType,
   onSubBatchesUpdated,
 }) => {
   const [wafersForCurrentForm, setWafersForCurrentForm] = useState<WaferData[]>([]);
@@ -48,16 +47,6 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
     }));
   }, [displayedFormSubBatches, selectedBatch]);
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
-
-  const handleWaferDispositionChange = useCallback((waferId: string, newDisposition: WaferData['disposition']) => {
-    setWafersForCurrentForm(prevWafers =>
-      prevWafers.map(wafer =>
-        wafer.waferId === waferId
-          ? { ...wafer, disposition: newDisposition }
-          : wafer
-      )
-    );
-  }, []);
 
   const handleParameterChange = useCallback((waferId: string, paramName: string, newValue: number) => {
     setWafersForCurrentForm(prevWafers =>
@@ -226,6 +215,8 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
                 <ProcessParameters
                   wafers={wafersForCurrentForm}
                   station={selectedBatch?.station || ''}
+                  onParameterChange={handleParameterChange}
+                  onAutoFillParameter={handleAutoFillParameter}
                 />
               </div>
             </>
