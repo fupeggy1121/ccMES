@@ -186,7 +186,7 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
   return (
     <>
         {/* Main content card */}
-        <div className="bg-white rounded-lg shadow-sm mb-4">
+        <div className="bg-white rounded-lg shadow-sm mb-2">
           {/* 设备&站点 Section */}
           <EquipmentStationInfo selectedBatch={selectedBatch} />
 
@@ -233,10 +233,10 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
 
           {/* 批次备注 Section */}
           {currentBatchRemarks.length > 0 && (
-            <div className="p-6 border-b">
-              <h2 className="text-base font-medium mb-4 text-gray-700">批次备注</h2>
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-                <ul className="space-y-2">
+            <div className="p-4 border-b">
+              <h2 className="text-base font-medium mb-2 text-gray-700">批次备注</h2>
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+                <ul className="space-y-1.5">
                   {currentBatchRemarks.map((remark, index) => (
                     <li key={index} className="flex items-start">
                       <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></span>
@@ -249,35 +249,30 @@ const OutstationForm: React.FC<OutstationFormProps> = ({
           )}
 
           {/* 操作按钮 */}
-          <div className="p-6 flex justify-end space-x-4">
+          <div className="p-4 flex justify-end items-center space-x-4">
             <button
               onClick={handleBackToBatchList}
               className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               取消
             </button>
-            <div className="flex flex-col items-end">
-              <button
-                onClick={handleConfirmOutstationClick}
-                disabled={isConfirming || isOutstationBlockedByPrinting}
-                className="inline-flex items-center px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isConfirming ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    处理中...
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4 mr-2" />
-                    确认出站
-                  </>
-                )}
-              </button>
-              {isOutstationBlockedByPrinting && (
-                <p className="text-xs text-red-600 mt-1">还有未打印标签的子批次，无法确认出站</p>
+            <button
+              onClick={handleConfirmOutstationClick}
+              disabled={isConfirming || isOutstationBlockedByPrinting}
+              className="inline-flex items-center px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isConfirming ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  处理中...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  确认出站
+                </>
               )}
-            </div>
+            </button>
           </div>
         </div>
     </>
