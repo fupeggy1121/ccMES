@@ -267,6 +267,22 @@ export const mockBatchService = {
     return { success: true };
   },
 
+  /** 批量扣留（底层写操作：直接翻转 isHold，不感知 HoldRecord 结构，供上层 batchHoldService 调用） */
+  holdBatches: async (batchIds: string[], reasonText: string): Promise<{ success: boolean }> => {
+    await delay();
+    _batches = _batches.map(b => (batchIds.includes(b.id) ? { ...b, isHold: true } : b));
+    batchIds.forEach(id => _addHistory(id, `批量扣留：${reasonText}`));
+    return { success: true };
+  },
+
+  /** 批量释放（底层写操作：直接翻转 isHold） */
+  releaseBatches: async (batchIds: string[]): Promise<{ success: boolean }> => {
+    await delay();
+    _batches = _batches.map(b => (batchIds.includes(b.id) ? { ...b, isHold: false } : b));
+    batchIds.forEach(id => _addHistory(id, '批量释放'));
+    return { success: true };
+  },
+
   /** 更新晶圆打标信息 */
   updateWaferMarking: async (waferId: string, markingCode: string, markingStatus: string) => {
     await delay();

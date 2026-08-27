@@ -217,6 +217,24 @@ const _realBatchApiService = {
     }),
 
   /**
+   * 批量扣留
+   */
+  holdBatches: (batchIds: string[], reasonText: string) =>
+    request('/batch/hold-batches', {
+      method: 'POST',
+      body: JSON.stringify({ batchIds, reasonText }),
+    }),
+
+  /**
+   * 批量释放
+   */
+  releaseBatches: (batchIds: string[]) =>
+    request('/batch/release-batches', {
+      method: 'POST',
+      body: JSON.stringify({ batchIds }),
+    }),
+
+  /**
    * 获取晶圆载具内容
    */
   getWaferCarrierContents: (subBatchUUIDs: string[], batchId: string) =>
