@@ -21,6 +21,7 @@ import {
   History,
   ShieldAlert,
   ShieldCheck,
+  Lock,
 } from 'lucide-react';
 
 // Define menu item type
@@ -55,6 +56,7 @@ const originalMenuItems: MenuItem[] = [
         icon: Box,
         subItems: [
           { id: 'fragment-management', label: '批次作业', icon: AlertTriangle },
+          { id: 'batch-hold-search', label: '批次检索批量HOLD/解锁', icon: Lock },
           { id: 'e-card', label: '批次流水卡', icon: FileText, href: 'https://oqkq2dgk7v34erk4eiqymb4jq.bolt.host' },
           { id: 'operation-log', label: '批次操作履历', icon: FileText, href: 'https://stellar-madeleine-ba4ceb.netlify.app' },
           { id: 'batch-creation', label: '本地批次创建', icon: Send, href: 'https://new-xxzc.bolt.host' },

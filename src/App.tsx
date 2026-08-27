@@ -12,6 +12,7 @@ import { LifetimeControlModeling } from './components/Auxiliary/LifetimeControlM
 import { CleaningRecordsModule } from './components/Carriers/CleaningRecordsModule';
 import FinishedProductInboundModule from './components/FinishedProduct/FinishedProductInboundModule';
 import BatchOperationsModule from './components/BatchOperations/BatchOperationsModule';
+import BatchHoldSearchModule from './components/BatchHoldSearch/BatchHoldSearchModule';
 import MRBManagement from './components/MRB/MRBManagement';
 import ProductModelManagement from './components/ProductModel/ProductModelManagement';
 import { OcapApp } from '../modules/ocap';
@@ -114,6 +115,8 @@ function App() {
         return <EquipmentManagement />;
       case 'fragment-management':
         return <BatchOperationsModule />;
+      case 'batch-hold-search':
+        return <BatchHoldSearchModule />;
       case 'mrb-management':
         return <MRBManagement />;
       case 'product-model-management-external':
