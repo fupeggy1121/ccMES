@@ -236,7 +236,9 @@ export const mockBatchService = {
   confirmOutstation: async (batchId: string, _payload: any) => {
     await delay();
     const idx = _batches.findIndex(b => b.id === batchId);
-    if (idx !== -1) _batches[idx] = { ..._batches[idx], status: '已出站' };
+    if (idx !== -1) {
+      _batches[idx] = { ..._batches[idx], status: '已出站', lastOutstationAt: new Date().toISOString() };
+    }
     _addHistory(batchId, '出站确认');
     return { success: true };
   },

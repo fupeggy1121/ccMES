@@ -1,6 +1,10 @@
 import { BatchData } from '../types';
 
-export const batchList: BatchData[] = [
+// 新增：用于派生 customerName / productCategory 演示数据的取值池
+const CUSTOMER_POOL = ['客户A', '客户B', '客户C'];
+const CATEGORY_POOL: NonNullable<BatchData['productCategory']>[] = ['正片', '测试片', '重掺片'];
+
+const _rawBatchList: BatchData[] = [
   // ─── 在制批次 (10) ────────────────────────────────────────
   {
     id: 'aba03c67-3bf4-417c-b013-43f8f4d83c8e',
@@ -477,3 +481,15 @@ export const batchList: BatchData[] = [
     isHold: false,
   },
 ];
+
+// 新增：为种子数据派生 lastOutstationAt（仅"已出站"/"待出站"批次，模拟已经过站的批次）、
+// customerName、productCategory，供批次检索/批量解锁功能演示筛选效果。
+export const batchList: BatchData[] = _rawBatchList.map((b, idx) => ({
+  ...b,
+  lastOutstationAt:
+    b.status === '已出站' || b.status === '待出站'
+      ? new Date(Date.UTC(2026, 7, 5 + (idx % 8), 8 + (idx % 10), 30, 0)).toISOString()
+      : undefined,
+  customerName: CUSTOMER_POOL[idx % CUSTOMER_POOL.length],
+  productCategory: CATEGORY_POOL[idx % CATEGORY_POOL.length],
+}));

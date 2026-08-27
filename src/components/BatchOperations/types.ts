@@ -24,6 +24,9 @@ export interface BatchData {
   isHold: boolean; // 新增：是否处于Hold状态
   defectDisposal?: '返工' | '报废' | '残值回收'; // 不良处置
   ledgerCode?: string; // 台账号（进站设备编号-设备总炉次-备件生命周期炉次）
+  lastOutstationAt?: string; // 新增：最近一次出站确认时间（ISO字符串），供批次检索按出站时间范围筛选
+  customerName?: string; // 新增：客户名称，供批量解锁按客户筛选
+  productCategory?: '测试片' | '正片' | '重掺片'; // 新增：产品分类，供批量解锁按分类筛选
 }
 
 export interface SubBatchData {
