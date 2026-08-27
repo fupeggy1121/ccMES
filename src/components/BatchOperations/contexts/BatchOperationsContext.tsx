@@ -13,6 +13,8 @@ interface BatchOperationsContextType {
   // 状态
   batchList: BatchData[];
   selectedBatch: BatchData | null;
+  /** 新增：重新拉取批次列表，供批量Hold/Release等写操作后刷新数据 */
+  fetchBatches: () => Promise<void>;
   displayedFormSubBatches: SubBatchData[];
   currentFormType: string;
   isTransferModalOpen: boolean;
@@ -252,6 +254,7 @@ export const BatchOperationsProvider: React.FC<{ children: ReactNode }> = ({ chi
     // 状态
     batchList,
     selectedBatch,
+    fetchBatches,
     displayedFormSubBatches,
     currentFormType,
     isAccumulateFromStaging,
