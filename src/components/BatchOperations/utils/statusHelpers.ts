@@ -16,6 +16,18 @@ export const getStatusColor = (status: string) => {
   }
 };
 
+export type BatchRunState = '运行' | '闲置' | '扣留';
+
+/**
+ * 新增：根据批次的加工状态（status）和扣留标记（isHold）派生出"批次状态"
+ * 已扣留 -> 扣留；未扣留且待进站 -> 闲置；其余（加工中/待出站）-> 运行
+ */
+export const deriveBatchRunState = (batch: { status: string; isHold: boolean }): BatchRunState => {
+  if (batch.isHold) return '扣留';
+  if (batch.status === '待进站') return '闲置';
+  return '运行';
+};
+
 /**
  * 检查批次是否可以进行特定操作
  */

@@ -95,7 +95,7 @@ mock 实现遵循项目现有约定（`mockBatchService.ts` 风格）：模块�
   - `BatchReleaseModal.tsx`：`releaseApprovalComment` 必填（对应截图"待会议决议后…解锁"的场景，记录决议依据），提交后调用 `releaseBatches`。
 - **联动**：`utils/statusHelpers.ts` 的 `getOperationDisabledState` 改为读取该批次是否存在 `status:'holding'` 的 `HoldRecord`（逻辑等价于现有 `isHold`），下游 `OutstationForm`/`PackagingSection` 等表单的调用方式不变。
 - **历史记录**：复用现有 `_addHistory` 机制，但记录内容从纯字符串扩展为关联 `HoldRecord.id` 的结构化记录，批次详情页可展开查看每条Hold/Release的完整上下文（来源、原因、操作人、时间、审批意见）。
-- 若批次正在加工中被选中Hold，本次不打断当前工序，出站后自动置为Hold（与用户原始需求"批次若加工中，则出站后自动HOLD"一致）——实现方式：写入 `HoldRecord` 时不依赖批次当前 `status`，出站环节的禁用判断始终读取最新 `HoldRecord`，天然满足这一行为，无需额外状态机。
+- **批次状态展示与勾选限制（2026-08-27 补充）**：`MasterBatchTable.tsx` 的"状态"列改名为"加工状态"（值不变：待进站/加工中/待出站/暂存），并新增一个派生的"批次状态"列（`utils/statusHelpers.ts` 的 `deriveBatchRunState`）：已 `isHold` → 扣留；未 Hold 且 `status==='待进站'` → 闲置；其余（加工中/待出站）→ 运行。业务规则：**扣留操作只能对"待进站"（闲置）批次执行**——`MasterBatchTable` 的批次多选 checkbox 对非"待进站"批次禁用（含"全选"），因此"批次状态=扣留"只会对应"加工状态=待进站"。此规则修正了本节最初"若批次正在加工中被选中Hold，出站后自动置为Hold"的设想；`检索批量HOLD/解锁`页（阶段②）的"一键批量HOLD"暂不受此限制，维持对检索结果整体生效。
 
 ## 阶段② 检索批量HOLD/解锁（新页面）
 

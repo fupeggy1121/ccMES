@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronUp, ChevronDown, ChevronsUpDown, Search, X } from 'lucide-react';
 import { BatchData } from '../types';
+import { BatchRunState, deriveBatchRunState } from '../utils/statusHelpers';
 
 interface MasterBatchTableProps {
   filteredBatchList: BatchData[];
@@ -26,10 +27,13 @@ interface ColFilter {
   productCode: string;
   productName: string;
   status: string;
+  /** 新增：批次状态（运行/闲置/扣留）列内筛选，空字符串表示不筛选 */
+  batchState: string;
   stationName: string;
 }
 
-const INIT_FILTERS: ColFilter = { batchCode: '', productCode: '', productName: '', status: '', stationName: '' };
+const INIT_FILTERS: ColFilter = { batchCode: '', productCode: '', productName: '', status: '', batchState: '', stationName: '' };
+const BATCH_STATE_OPTS: BatchRunState[] = ['运行', '闲置', '扣留'];
 
 const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
   filteredBatchList,
@@ -75,6 +79,7 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
       (b.productCode || '').toLowerCase().includes(filters.productCode.toLowerCase()) &&
       (b.productName || '').toLowerCase().includes(filters.productName.toLowerCase()) &&
       (b.status || '').toLowerCase().includes(filters.status.toLowerCase()) &&
+      (filters.batchState === '' || deriveBatchRunState(b) === filters.batchState) &&
       (b.stationName || '').toLowerCase().includes(filters.stationName.toLowerCase())
     );
     if (sortField && sortDir) {
@@ -91,8 +96,13 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
     return list;
   }, [filteredBatchList, filters, sortField, sortDir]);
 
+  // 新增：只有"待进站"（闲置）批次才允许被勾选扣留，全选/全选态判断也只看这部分
+  const eligibleForHoldIds = useMemo(
+    () => processedList.filter(b => b.status === '待进站').map(b => b.id),
+    [processedList]
+  );
   const allChecked =
-    showCheckboxColumn && processedList.length > 0 && processedList.every(b => checkedBatchIds?.includes(b.id));
+    showCheckboxColumn && eligibleForHoldIds.length > 0 && eligibleForHoldIds.every(id => checkedBatchIds?.includes(id));
 
   useEffect(() => {
     onVisibleIdsChange?.(processedList.map(b => b.id));
@@ -166,6 +176,38 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
     </span>
   );
 
+  // 新增：批次状态（运行/闲置/扣留）列内筛选下拉，交互复用 StatusFilter 的模式，选项固定
+  const BatchStateFilter = () => (
+    <span className="relative" onClick={e => e.stopPropagation()}>
+      <button
+        onClick={() => setOpenFilter(openFilter === 'batchState' ? null : 'batchState')}
+        className={`p-0.5 rounded hover:bg-gray-200 align-middle ${filters.batchState ? 'text-blue-500' : 'text-gray-400'}`}
+      >
+        <Search className="w-3 h-3" />
+      </button>
+      {openFilter === 'batchState' && (
+        <div className="absolute z-30 top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl p-2 min-w-[120px]">
+          {(['', ...BATCH_STATE_OPTS] as string[]).map(s => (
+            <button
+              key={s || '__all__'}
+              onClick={() => { setFilter('batchState', s); setOpenFilter(null); }}
+              className={`w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 ${filters.batchState === s ? 'text-blue-600 font-semibold' : ''}`}
+            >
+              {s || '全部'}
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+
+  // 新增："批次状态"徽标颜色：运行=蓝，闲置=灰，扣留=红（与 HOLD 徽标一致）
+  const batchStateBadgeClass: Record<BatchRunState, string> = {
+    运行: 'text-blue-600 bg-blue-100',
+    闲置: 'text-gray-600 bg-gray-100',
+    扣留: 'text-red-700 bg-red-100',
+  };
+
   interface ThProps {
     field: SortField;
     label: string;
@@ -184,6 +226,23 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
           {label}
           <SortIcon field={field} />
         </button>
+        {filterEl}
+      </span>
+    </th>
+  );
+
+  // 新增：不可排序、仅带筛选的表头单元格（"批次状态"是派生字段，不参与现有 SortField 排序）
+  interface ThFilterOnlyProps {
+    label: string;
+    align?: 'left' | 'center';
+    filterEl?: React.ReactNode;
+  }
+  const ThFilterOnly = ({ label, align = 'left', filterEl }: ThFilterOnlyProps) => (
+    <th
+      className={`px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b select-none ${align === 'center' ? 'text-center' : 'text-left'}`}
+    >
+      <span className={`inline-flex items-center gap-0.5 ${align === 'center' ? 'justify-center w-full' : ''}`}>
+        <span className="whitespace-nowrap">{label}</span>
         {filterEl}
       </span>
     </th>
@@ -217,7 +276,7 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
                   <input
                     type="checkbox"
                     checked={allChecked}
-                    onChange={() => onToggleAllChecked?.(processedList.map(b => b.id))}
+                    onChange={() => onToggleAllChecked?.(eligibleForHoldIds)}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     aria-label="全选"
                   />
@@ -233,7 +292,10 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
               {showDefectDisposalColumn && (
                 <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b text-center">不良处置</th>
               )}
-              {showStatusColumn && <Th field="status" label="状态" align="center" filterEl={<StatusFilter />} />}
+              {showStatusColumn && (
+                <ThFilterOnly label="批次状态" align="center" filterEl={<BatchStateFilter />} />
+              )}
+              {showStatusColumn && <Th field="status" label="加工状态" align="center" filterEl={<StatusFilter />} />}
               <Th field="stationName" label="站点" filterEl={<FilterInput col="stationName" placeholder="搜索站点" />} />
             </tr>
           </thead>
@@ -243,7 +305,7 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
                 <td
                   colSpan={
                     (showCheckboxColumn ? 1 : 0) +
-                    (showStatusColumn ? (showDefectDisposalColumn ? 10 : 9) : (showDefectDisposalColumn ? 9 : 8))
+                    (showStatusColumn ? (showDefectDisposalColumn ? 11 : 10) : (showDefectDisposalColumn ? 9 : 8))
                   }
                   className="px-4 py-8 text-center text-gray-400 text-sm"
                 >
@@ -267,7 +329,10 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
                         type="checkbox"
                         checked={checkedBatchIds?.includes(batch.id) ?? false}
                         onChange={() => onToggleBatchChecked?.(batch.id)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        // 新增：扣留操作只能对"待进站"（闲置）批次执行，非待进站批次不可勾选
+                        disabled={batch.status !== '待进站'}
+                        title={batch.status !== '待进站' ? '仅"待进站"（闲置）批次可勾选扣留' : undefined}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-30 disabled:cursor-not-allowed"
                       />
                     </td>
                   )}
@@ -296,6 +361,15 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
                           {batch.defectDisposal}
                         </span>
                       ) : <span className="text-gray-300 text-xs">—</span>}
+                    </td>
+                  )}
+                  {showStatusColumn && (
+                    <td className="px-3 py-2.5 text-center">
+                      <span
+                        className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${batchStateBadgeClass[deriveBatchRunState(batch)]}`}
+                      >
+                        {deriveBatchRunState(batch)}
+                      </span>
                     </td>
                   )}
                   {showStatusColumn && (
