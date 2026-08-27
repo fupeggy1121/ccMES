@@ -24,9 +24,14 @@ const BatchReleaseModal: React.FC<BatchReleaseModalProps> = ({ isOpen, batchIds,
     if (!approvalComment.trim()) return;
     setSubmitting(true);
     try {
-      await batchHoldService.releaseBatches(batchIds, approvalComment.trim(), operator);
+      const released = await batchHoldService.releaseBatches(batchIds, approvalComment.trim(), operator);
       setApprovalComment('');
+      if (released.length < batchIds.length) {
+        alert(`已释放 ${released.length}/${batchIds.length} 个批次，其余批次当前无扣留记录`);
+      }
       onConfirmed();
+    } catch (error) {
+      alert(`操作失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setSubmitting(false);
     }

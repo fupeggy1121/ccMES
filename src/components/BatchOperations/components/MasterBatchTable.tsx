@@ -1,5 +1,5 @@
 // src/components/MasterBatchTable.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronUp, ChevronDown, ChevronsUpDown, Search, X } from 'lucide-react';
 import { BatchData } from '../types';
 
@@ -13,7 +13,9 @@ interface MasterBatchTableProps {
   /** 新增：批量Hold/Release用的批次勾选态，不传时不渲染勾选列 */
   checkedBatchIds?: string[];
   onToggleBatchChecked?: (batchId: string) => void;
-  onToggleAllChecked?: () => void;
+  onToggleAllChecked?: (visibleIds: string[]) => void;
+  /** 新增：当前（列过滤+排序后）实际可见的批次id集合发生变化时回调，供上层与勾选态做交集收敛 */
+  onVisibleIdsChange?: (visibleIds: string[]) => void;
 }
 
 type SortDir = 'asc' | 'desc' | null;
@@ -39,10 +41,9 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
   checkedBatchIds,
   onToggleBatchChecked,
   onToggleAllChecked,
+  onVisibleIdsChange,
 }) => {
   const showCheckboxColumn = typeof onToggleBatchChecked === 'function';
-  const allChecked =
-    showCheckboxColumn && filteredBatchList.length > 0 && (checkedBatchIds?.length ?? 0) === filteredBatchList.length;
 
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
@@ -89,6 +90,14 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
     }
     return list;
   }, [filteredBatchList, filters, sortField, sortDir]);
+
+  const allChecked =
+    showCheckboxColumn && processedList.length > 0 && processedList.every(b => checkedBatchIds?.includes(b.id));
+
+  useEffect(() => {
+    onVisibleIdsChange?.(processedList.map(b => b.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processedList]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field)
@@ -208,7 +217,7 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
                   <input
                     type="checkbox"
                     checked={allChecked}
-                    onChange={() => onToggleAllChecked?.()}
+                    onChange={() => onToggleAllChecked?.(processedList.map(b => b.id))}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     aria-label="全选"
                   />

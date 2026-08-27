@@ -199,13 +199,33 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
     );
   };
 
-  // 新增：全选/取消全选当前列表的主批次
-  const handleToggleAllMasterBatchesChecked = () => {
-    if (checkedMasterBatchIds.length === currentBatchList.length) {
-      setCheckedMasterBatchIds([]);
-    } else {
-      setCheckedMasterBatchIds(currentBatchList.map(b => b.id));
-    }
+  // 新增：全选/取消全选当前（经 MasterBatchTable 内部列筛选后）可见的主批次
+  const handleToggleAllMasterBatchesChecked = (visibleIds: string[]) => {
+    setCheckedMasterBatchIds(prev => {
+      const prevSet = new Set(prev);
+      const allVisibleChecked = visibleIds.length > 0 && visibleIds.every(id => prevSet.has(id));
+      if (allVisibleChecked) {
+        // 取消勾选：从选中集合中移除当前可见的id，保留其余（不同筛选状态下）已勾选的id
+        const visibleSet = new Set(visibleIds);
+        return prev.filter(id => !visibleSet.has(id));
+      }
+      // 勾选：将当前可见的id并入选中集合
+      const merged = new Set(prev);
+      visibleIds.forEach(id => merged.add(id));
+      return Array.from(merged);
+    });
+  };
+
+  // 新增：MasterBatchTable 可见批次集合变化时，收敛勾选态为与可见集合的交集，
+  // 避免因（外层状态筛选或内部列筛选）导致的“已勾选但不可见”的批次被静默计入批量操作
+  const handleVisibleMasterBatchIdsChange = (visibleIds: string[]) => {
+    setCheckedMasterBatchIds(prev => {
+      if (prev.length === 0) return prev;
+      const visibleSet = new Set(visibleIds);
+      const next = prev.filter(id => visibleSet.has(id));
+      if (next.length === prev.length) return prev;
+      return next;
+    });
   };
 
   // 新增：批量Hold/Release弹窗确认后的公共收尾逻辑
@@ -238,6 +258,7 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
     } catch (error) {
       console.error('Failed to load sub-batches:', error);
       setDisplayedSubBatches([]);
+      setHoldHistoryRecords([]);
     } finally {
       setLoadingSubBatches(false);
     }
@@ -627,6 +648,7 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
               checkedBatchIds={activeTab === 'inProcess' ? checkedMasterBatchIds : undefined}
               onToggleBatchChecked={activeTab === 'inProcess' ? handleToggleMasterBatchChecked : undefined}
               onToggleAllChecked={activeTab === 'inProcess' ? handleToggleAllMasterBatchesChecked : undefined}
+              onVisibleIdsChange={activeTab === 'inProcess' ? handleVisibleMasterBatchIdsChange : undefined}
             />
 
             {/* 子批次列表 - 根据 selectedMasterBatchId 的状态进行渲染 */}

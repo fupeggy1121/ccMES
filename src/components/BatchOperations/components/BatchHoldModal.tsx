@@ -29,7 +29,7 @@ const BatchHoldModal: React.FC<BatchHoldModalProps> = ({ isOpen, batchIds, onClo
     if (!text.trim() || !processEngineer) return;
     setSubmitting(true);
     try {
-      await batchHoldService.holdBatches(
+      const created = await batchHoldService.holdBatches(
         batchIds,
         {
           category,
@@ -42,7 +42,12 @@ const BatchHoldModal: React.FC<BatchHoldModalProps> = ({ isOpen, batchIds, onClo
       );
       setText('');
       setCategory('SPC异常');
+      if (created.length < batchIds.length) {
+        alert(`已扣留 ${created.length}/${batchIds.length} 个批次，其余批次未能找到对应记录`);
+      }
       onConfirmed();
+    } catch (error) {
+      alert(`操作失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setSubmitting(false);
     }

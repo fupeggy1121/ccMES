@@ -34,6 +34,8 @@ const BatchHoldSearchModule: React.FC = () => {
       setAllBatches(data);
       const activeRecords = await batchHoldService.listActiveHoldRecords();
       setHeldBatchIds(Array.from(new Set(activeRecords.map(r => r.batchId))));
+    } catch (error) {
+      alert(`加载批次数据失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -118,7 +120,6 @@ const BatchHoldSearchModule: React.FC = () => {
   const handleHoldConfirmed = async () => {
     setIsHoldModalOpen(false);
     await loadBatches();
-    setHasSearched(false);
   };
 
   return (
