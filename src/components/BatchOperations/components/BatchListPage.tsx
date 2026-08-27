@@ -4,6 +4,8 @@ import { useBatchOperations } from '../contexts/BatchOperationsContext';
 import FinalSortingOverviewModal from './FinalSortingOverviewModal';
 import MasterBatchTable from './MasterBatchTable';
 import SubBatchTable from './SubBatchTable';
+import BatchHoldModal from './BatchHoldModal';
+import BatchReleaseModal from './BatchReleaseModal';
 import { Clock, BookOpen } from 'lucide-react';
 
 interface BatchListPageProps {
@@ -61,11 +63,16 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
     setIsDocumentationModalOpen,
     setCurrentFormType,
     setSelectedBatch,
+    fetchBatches, // 新增：批量Hold/Release后刷新批次列表
   } = useBatchOperations();
 
   // 状态管理
   const [selectedMasterBatchId, setSelectedMasterBatchId] = useState<string | null>(null);
   const [checkedSubBatchIds, setCheckedSubBatchIds] = useState<string[]>([]);
+  // 新增：批量Hold/Release用的主批次多选态与弹窗开关
+  const [checkedMasterBatchIds, setCheckedMasterBatchIds] = useState<string[]>([]);
+  const [isBatchHoldModalOpen, setIsBatchHoldModalOpen] = useState(false);
+  const [isBatchReleaseModalOpen, setIsBatchReleaseModalOpen] = useState(false);
   const [displayedSubBatches, setDisplayedSubBatches] = useState<SubBatchData[]>([]);
   const [loadingSubBatches, setLoadingSubBatches] = useState<boolean>(false);
   const [isFinalSortingOverviewModalOpen, setIsFinalSortingOverviewModalOpen] = useState<boolean>(false);
@@ -177,6 +184,31 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
     setSelectedMasterBatchId(null);
     setDisplayedSubBatches([]);
     setCheckedSubBatchIds([]);
+    setCheckedMasterBatchIds([]);
+  };
+
+  // 新增：切换单个主批次的批量Hold勾选态
+  const handleToggleMasterBatchChecked = (batchId: string) => {
+    setCheckedMasterBatchIds(prev =>
+      prev.includes(batchId) ? prev.filter(id => id !== batchId) : [...prev, batchId]
+    );
+  };
+
+  // 新增：全选/取消全选当前列表的主批次
+  const handleToggleAllMasterBatchesChecked = () => {
+    if (checkedMasterBatchIds.length === currentBatchList.length) {
+      setCheckedMasterBatchIds([]);
+    } else {
+      setCheckedMasterBatchIds(currentBatchList.map(b => b.id));
+    }
+  };
+
+  // 新增：批量Hold/Release弹窗确认后的公共收尾逻辑
+  const handleBatchHoldOrReleaseConfirmed = async () => {
+    setIsBatchHoldModalOpen(false);
+    setIsBatchReleaseModalOpen(false);
+    setCheckedMasterBatchIds([]);
+    await fetchBatches();
   };
 
   // 处理主批次行点击
@@ -549,13 +581,26 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
                     暂存在制批次 ({temporaryBatchesList.length})
                   </button>
                 </nav>
-                <button
-                  onClick={() => setIsDocumentationModalOpen(true)}
-                  className="mb-1 inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <BookOpen className="w-3.5 h-3.5 mr-1.5" />
-                  文档
-                </button>
+                <div className="flex items-center gap-2 mb-1">
+                  {activeTab === 'inProcess' && (
+                    <select
+                      value={statusFilter}
+                      onChange={e => setStatusFilter(e.target.value)}
+                      className="text-xs border border-gray-300 rounded-md px-2 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">全部批次</option>
+                      <option value="flowing">仅看流转中</option>
+                      <option value="hold">仅看已Hold</option>
+                    </select>
+                  )}
+                  <button
+                    onClick={() => setIsDocumentationModalOpen(true)}
+                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 mr-1.5" />
+                    文档
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -567,6 +612,9 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
               getStatusColor={getStatusColor}
               showStatusColumn={activeTab === 'inProcess'}
               showDefectDisposalColumn={activeTab === 'temporary'}
+              checkedBatchIds={activeTab === 'inProcess' ? checkedMasterBatchIds : undefined}
+              onToggleBatchChecked={activeTab === 'inProcess' ? handleToggleMasterBatchChecked : undefined}
+              onToggleAllChecked={activeTab === 'inProcess' ? handleToggleAllMasterBatchesChecked : undefined}
             />
 
             {/* 子批次列表 - 根据 selectedMasterBatchId 的状态进行渲染 */}
@@ -803,6 +851,30 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
                   >
                     最终分选总览
                   </button>
+
+                  <button
+                    onClick={() => setIsBatchHoldModalOpen(true)}
+                    disabled={checkedMasterBatchIds.length === 0}
+                    className={`w-full flex justify-center items-center px-2 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
+                      checkedMasterBatchIds.length > 0
+                        ? 'text-white bg-red-600 hover:bg-red-700'
+                        : 'text-gray-400 bg-gray-200 cursor-not-allowed'
+                    }`}
+                  >
+                    批量扣留（{checkedMasterBatchIds.length}）
+                  </button>
+
+                  <button
+                    onClick={() => setIsBatchReleaseModalOpen(true)}
+                    disabled={checkedMasterBatchIds.length === 0}
+                    className={`w-full flex justify-center items-center px-2 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                      checkedMasterBatchIds.length > 0
+                        ? 'text-white bg-green-600 hover:bg-green-700'
+                        : 'text-gray-400 bg-gray-200 cursor-not-allowed'
+                    }`}
+                  >
+                    批量释放（{checkedMasterBatchIds.length}）
+                  </button>
                 </div>
               ) : (
                 /* 暂存在制批次标签页：移出暂存区、拆批、攒批 */
@@ -869,6 +941,20 @@ const BatchListPage: React.FC<BatchListPageProps> = ({
         wafers={aggregatedWafersForOverview}
         selectedBatch={selectedBatch}
         isAggregatedDataLoading={isAggregatedDataLoading}
+      />
+
+      {/* 新增：批量扣留 / 批量释放模态框 */}
+      <BatchHoldModal
+        isOpen={isBatchHoldModalOpen}
+        batchIds={checkedMasterBatchIds}
+        onClose={() => setIsBatchHoldModalOpen(false)}
+        onConfirmed={handleBatchHoldOrReleaseConfirmed}
+      />
+      <BatchReleaseModal
+        isOpen={isBatchReleaseModalOpen}
+        batchIds={checkedMasterBatchIds}
+        onClose={() => setIsBatchReleaseModalOpen(false)}
+        onConfirmed={handleBatchHoldOrReleaseConfirmed}
       />
 
       {/* 新增：片篮重组模块功能说明模态框 - 已整合至系统说明文档 */}
