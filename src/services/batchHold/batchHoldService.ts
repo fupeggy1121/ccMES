@@ -1,6 +1,6 @@
 import { BatchData } from '../../components/BatchOperations/types';
 import { batchApiService } from '../../components/BatchOperations/services/batchApiService';
-import { BatchHoldService, HoldBatchesReason, HoldRecord } from './types';
+import { BatchHoldService, HoldRecord } from './types';
 
 let _holdRecords: HoldRecord[] = [];
 let _seq = 0;
@@ -8,7 +8,7 @@ const nextId = (prefix: string) => `${prefix}-${Date.now()}-${_seq++}`;
 
 async function resolveBatchMeta(batchId: string): Promise<BatchData | undefined> {
   const batches = await batchApiService.listBatches();
-  return batches.find(b => b.id === batchId);
+  return batches.find((b: BatchData) => b.id === batchId);
 }
 
 export const batchHoldService: BatchHoldService = {

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import type { BatchData } from '../../components/BatchOperations/types';
 import { batchHoldService, __resetBatchHoldServiceForTests } from './batchHoldService';
 import { batchApiService } from '../../components/BatchOperations/services/batchApiService';
 
@@ -24,7 +25,7 @@ describe('batchHoldService', () => {
     expect(created[0].notifiedProcessEngineer).toBe('张伟');
     expect(created[0].notifiedQualityEngineer).toBe('李娜');
 
-    const updated = (await batchApiService.listBatches()).find(b => b.id === targetId);
+    const updated = (await batchApiService.listBatches()).find((b: BatchData) => b.id === targetId);
     expect(updated?.isHold).toBe(true);
   });
 
@@ -40,7 +41,7 @@ describe('batchHoldService', () => {
     expect(released[0].releaseApprovalComment).toBe('会议决议：风险已排除');
     expect(released[0].releaseBy).toBe('reviewer');
 
-    const updated = (await batchApiService.listBatches()).find(b => b.id === targetId);
+    const updated = (await batchApiService.listBatches()).find((b: BatchData) => b.id === targetId);
     expect(updated?.isHold).toBe(false);
   });
 
