@@ -10,6 +10,10 @@ interface MasterBatchTableProps {
   getStatusColor: (status: string) => string;
   showStatusColumn?: boolean;
   showDefectDisposalColumn?: boolean;
+  /** 新增：批量Hold/Release用的批次勾选态，不传时不渲染勾选列 */
+  checkedBatchIds?: string[];
+  onToggleBatchChecked?: (batchId: string) => void;
+  onToggleAllChecked?: () => void;
 }
 
 type SortDir = 'asc' | 'desc' | null;
@@ -32,7 +36,14 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
   getStatusColor,
   showStatusColumn = true,
   showDefectDisposalColumn = false,
+  checkedBatchIds,
+  onToggleBatchChecked,
+  onToggleAllChecked,
 }) => {
+  const showCheckboxColumn = typeof onToggleBatchChecked === 'function';
+  const allChecked =
+    showCheckboxColumn && filteredBatchList.length > 0 && (checkedBatchIds?.length ?? 0) === filteredBatchList.length;
+
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [filters, setFilters] = useState<ColFilter>(INIT_FILTERS);
@@ -192,6 +203,17 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10">
             <tr>
+              {showCheckboxColumn && (
+                <th className="px-3 py-2 bg-gray-50 border-b w-8 text-center">
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    onChange={() => onToggleAllChecked?.()}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    aria-label="全选"
+                  />
+                </th>
+              )}
               <Th field="batchCode" label="批次编码" filterEl={<FilterInput col="batchCode" placeholder="搜索批次" />} />
               <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b">台账号</th>
               <Th field="productCode" label="产品料号" filterEl={<FilterInput col="productCode" placeholder="搜索料号" />} />
@@ -209,7 +231,13 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
           <tbody className="divide-y divide-gray-100">
             {processedList.length === 0 ? (
               <tr>
-                <td colSpan={showStatusColumn ? (showDefectDisposalColumn ? 10 : 9) : (showDefectDisposalColumn ? 9 : 8)} className="px-4 py-8 text-center text-gray-400 text-sm">
+                <td
+                  colSpan={
+                    (showCheckboxColumn ? 1 : 0) +
+                    (showStatusColumn ? (showDefectDisposalColumn ? 10 : 9) : (showDefectDisposalColumn ? 9 : 8))
+                  }
+                  className="px-4 py-8 text-center text-gray-400 text-sm"
+                >
                   无匹配批次
                 </td>
               </tr>
@@ -224,7 +252,24 @@ const MasterBatchTable: React.FC<MasterBatchTableProps> = ({
                   }`}
                   onClick={() => handleMasterRowClick(batch.id)}
                 >
-                  <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">{batch.batchCode}</td>
+                  {showCheckboxColumn && (
+                    <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={checkedBatchIds?.includes(batch.id) ?? false}
+                        onChange={() => onToggleBatchChecked?.(batch.id)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                    </td>
+                  )}
+                  <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">
+                    {batch.batchCode}
+                    {batch.isHold && (
+                      <span className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded bg-red-100 text-red-700">
+                        HOLD
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap font-mono text-xs">{batch.ledgerCode || '—'}</td>
                   <td className="px-3 py-2.5 text-gray-700 whitespace-nowrap">{batch.productCode}</td>
                   <td className="px-3 py-2.5 text-gray-700 whitespace-nowrap">{batch.productName}</td>
