@@ -389,10 +389,56 @@ export const mockBatchService = {
     return { success: true, newBatchId };
   },
 
-  /** 并批确认 */
-  confirmMerge: async (payload: any) => {
+  /** 并批确认：把源批次的全部子批次与晶圆整体挪到目标批次名下，源批次保留记录标记为已合批 */
+  confirmMerge: async (
+    sourceBatchId: string,
+    payload: { targetBatchId: string; operator: string }
+  ): Promise<{ success: boolean }> => {
     await delay();
-    _addHistory(payload.batchId, '并批');
+    const sourceIdx = _batches.findIndex(b => b.id === sourceBatchId);
+    const targetIdx = _batches.findIndex(b => b.id === payload.targetBatchId);
+    if (sourceIdx === -1) throw new Error(`源批次 ${sourceBatchId} 不存在`);
+    if (targetIdx === -1) throw new Error(`目标批次 ${payload.targetBatchId} 不存在`);
+    const sourceBatch = _batches[sourceIdx];
+    const targetBatch = _batches[targetIdx];
+    if (sourceBatch.id === targetBatch.id) throw new Error('不能合并到批次自身');
+    if (sourceBatch.isHold) throw new Error('源批次已锁定，无法并批');
+    if (targetBatch.isHold) throw new Error('目标批次已锁定，无法接收并批');
+    if (sourceBatch.status === '已合批') throw new Error('源批次已经合批，无法重复操作');
+    if (targetBatch.status === '已合批') throw new Error('目标批次已合批，不能作为并批目标');
+
+    const occurredAt = new Date().toISOString();
+    const sourceSubs = _subBatches[sourceBatchId] || [];
+
+    // 子批次 sublotId 保留原名不改写，归属只看 _subBatches 的 key，与现有模型一致
+    _subBatches[payload.targetBatchId] = [...(_subBatches[payload.targetBatchId] || []), ...sourceSubs];
+    sourceSubs.forEach(sub => {
+      _wafers[sub.id] = (_wafers[sub.id] || []).map(w => ({
+        ...w,
+        lineageEvents: [
+          ...(w.lineageEvents || []),
+          { eventType: 'merge' as const, fromBatchId: sourceBatchId, toBatchId: payload.targetBatchId, occurredAt, operatedBy: payload.operator },
+        ],
+      }));
+    });
+    _subBatches[sourceBatchId] = [];
+
+    const targetSubsAfter = _subBatches[payload.targetBatchId];
+    const targetTotal = targetSubsAfter.reduce((sum, s) => sum + s.totalQty, 0);
+    const targetGood = targetSubsAfter.reduce((sum, s) => sum + s.goodQty, 0);
+    _batches[targetIdx] = { ...targetBatch, totalQty: targetTotal, goodQty: targetGood, defectQty: targetTotal - targetGood };
+    _batches[sourceIdx] = {
+      ...sourceBatch,
+      status: '已合批',
+      mergedIntoBatchId: payload.targetBatchId,
+      totalQty: 0,
+      goodQty: 0,
+      defectQty: 0,
+    };
+
+    _addHistory(sourceBatchId, `并批：已合并至批次 ${targetBatch.batchCode}`);
+    _addHistory(payload.targetBatchId, `并批：接收批次 ${sourceBatch.batchCode} 的全部子批次`);
+
     return { success: true };
   },
 

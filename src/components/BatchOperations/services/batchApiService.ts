@@ -210,10 +210,10 @@ const _realBatchApiService = {
   /**
    * 并批确认
    */
-  confirmMerge: (payload: any) =>
+  confirmMerge: (sourceBatchId: string, payload: any) =>
     request('/confirm-merge', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ sourceBatchId, ...payload }),
     }),
 
   /**
