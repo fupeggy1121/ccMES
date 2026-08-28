@@ -441,6 +441,38 @@ export const mockBatchService = {
 
     return { success: true };
   },
+  /**
+   * 切入返工子路径：批次ID不变，只做真实的状态/路由写入，不产生 LineageEvent、不触碰 wafer 数组
+   * （返工不改变批次归属，对血缘正向追踪没有查询价值）
+   */
+  confirmCutIntoSubpath: async (
+    batchId: string,
+    payload: {
+      reworkPathId: string;
+      reworkFirstStationCode: string;
+      reworkFirstStationName: string;
+      returnStationCode: string;
+      operator: string;
+    }
+  ): Promise<{ success: boolean }> => {
+    await delay();
+    const idx = _batches.findIndex(b => b.id === batchId);
+    if (idx === -1) throw new Error(`批次 ${batchId} 不存在`);
+    const batch = _batches[idx];
+    if (batch.reworkPathId) throw new Error('批次已处于返工路径中，无法重复切入');
+
+    _batches[idx] = {
+      ...batch,
+      reworkPathId: payload.reworkPathId,
+      reworkReturnStationCode: payload.returnStationCode,
+      nextStationCode: payload.reworkFirstStationCode,
+      nextStationName: payload.reworkFirstStationName,
+    };
+
+    _addHistory(batchId, `切入返工子路径：${payload.reworkPathId}（回流站点：${payload.returnStationCode}）`);
+    return { success: true };
+  },
+
 
   /** 批量扣留（底层写操作：直接翻转 isHold，不感知 HoldRecord 结构，供上层 batchHoldService 调用） */
   holdBatches: async (batchIds: string[], reasonText: string): Promise<{ success: boolean }> => {

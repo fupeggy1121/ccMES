@@ -217,6 +217,15 @@ const _realBatchApiService = {
     }),
 
   /**
+   * 切入返工子路径
+   */
+  confirmCutIntoSubpath: (batchId: string, payload: any) =>
+    request('/confirm-cut-into-subpath', {
+      method: 'POST',
+      body: JSON.stringify({ batchId, ...payload }),
+    }),
+
+  /**
    * 批量扣留
    */
   holdBatches: (batchIds: string[], reasonText: string) =>
