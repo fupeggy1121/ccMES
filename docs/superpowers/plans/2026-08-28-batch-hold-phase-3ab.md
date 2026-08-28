@@ -2358,7 +2358,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Create: `src/components/SpcAutoHoldRules/SpcAutoHoldRulesModule.tsx`
 
 **Interfaces:**
-- Consumes: `ruleStorage`（Task 15）、`spcAutoHoldService`（Task 16）、`batchApiService.listStations`（已存在，用于机台下拉选项）
+- Consumes: `ruleStorage`（Task 15）、`spcAutoHoldService`（Task 16）、`batchApiService.listBatches`（已存在，用于从批次数据里取出真实存在过的机台编码下拉选项——`StationData`（`listStations` 的返回类型）只有 `{code, name}`，是工序/站点而不是机台，没有 `equipmentCode` 字段，机台编码只存在于 `BatchData.equipmentCode` 上，没有独立的机台主数据服务）
 - Produces: `SpcAutoHoldRulesModule` 组件（默认导出），供 Task 18 挂载
 
 **这个任务是纯 UI，不新增 vitest 测试**（沿用项目约定）。参照 [BatchHoldSearchModule.tsx](../../../src/components/BatchHoldSearch/BatchHoldSearchModule.tsx) 的整体风格：原生 HTML + Tailwind，模块顶部一次性 `useEffect` 加载数据。
@@ -2409,8 +2409,10 @@ const SpcAutoHoldRulesModule: React.FC = () => {
   useEffect(() => {
     loadRules();
     setExecutionRecords(spcAutoHoldService.listExecutionRecords());
-    batchApiService.listStations().then((stations: any[]) => {
-      const codes = Array.from(new Set(stations.map(s => s.equipmentCode).filter(Boolean)));
+    // 机台编码没有独立的主数据服务，只能从批次数据里的 equipmentCode 字段取真实出现过的值去重
+    // （StationData/listStations 是工序/站点列表，只有 code/name，没有 equipmentCode）
+    batchApiService.listBatches().then((batches: any[]) => {
+      const codes = Array.from(new Set(batches.map(b => b.equipmentCode).filter(Boolean))) as string[];
       setEquipmentOptions(codes);
     });
   }, []);
