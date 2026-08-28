@@ -20,7 +20,8 @@ export const useBatchOperationsHandlers = (
     batchList: BatchData[]
   ) => Promise<WaferData[]>,
   loadBatchRemarks: (batchId: string) => Promise<void>,
-  backToBatchList: () => void
+  backToBatchList: () => void,
+  targetBatchCode: string
 ) => {
   const handleInstation = useCallback(async (batch: BatchData) => {
     setSelectedBatch(batch);
@@ -311,12 +312,22 @@ export const useBatchOperationsHandlers = (
     }
   }, [selectedBatch, backToBatchList]);
 
-  const handleConfirmMergeBatch = useCallback(() => {
-    if (selectedBatch) {
-      console.log('确认并批:', selectedBatch.batchCode);
-      backToBatchList();
+  const handleConfirmMergeBatch = useCallback(async () => {
+    if (!selectedBatch) return;
+    const targetBatch = batchList.find(b => b.batchCode === targetBatchCode);
+    if (!targetBatch) {
+      console.error('未找到目标批次:', targetBatchCode);
+      throw new Error('请先选择并批目标批次');
     }
-  }, [selectedBatch, backToBatchList]);
+    try {
+      await batchApiService.confirmMerge(selectedBatch.id, { targetBatchId: targetBatch.id, operator: '当前操作人' });
+      await fetchBatches();
+      backToBatchList();
+    } catch (err: any) {
+      console.error('Error confirming merge:', err.message);
+      throw err;
+    }
+  }, [selectedBatch, batchList, targetBatchCode, fetchBatches, backToBatchList]);
 
   const handleConfirmWaferTransfer = useCallback((
     finalTargetCarriers: TargetCarrier[],

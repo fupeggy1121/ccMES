@@ -74,7 +74,7 @@ interface BatchOperationsContextType {
   handleProcessEntry: (batch: BatchData) => Promise<void>;
   handleConfirmSplit: (payload: { stagingAreaId?: string; targetCarriers: TargetCarrier[]; targetWafers: WaferData[] }) => Promise<void>;
   handleConfirmCancelEntry: () => void;
-  handleConfirmMergeBatch: () => void;
+  handleConfirmMergeBatch: () => Promise<void>;
   handleConfirmWaferTransfer: (finalTargetCarriers: TargetCarrier[], finalSourceWafers: WaferData[]) => void;
   handleConfirmCarrierChange: (selectedSubBatches: SubBatchData[], mode: string, targetCarriers: TargetCarrier[], finalWafers: WaferData[]) => void;
   handleConfirmPostEtchInspectionBalance: (targetCarriers: TargetCarrier[], finalWafers: WaferData[]) => void;
@@ -202,7 +202,8 @@ export const BatchOperationsProvider: React.FC<{ children: ReactNode }> = ({ chi
     getSubBatchesForMaster,
     (subBatches, stationCode) => fetchWafersForSubBatches(subBatches, stationCode, batchList),
     loadBatchRemarks,
-    handleBackToBatchList
+    handleBackToBatchList,
+    targetBatchCode
   );
 
   // 其他辅助函数
