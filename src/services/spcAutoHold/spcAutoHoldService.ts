@@ -1,5 +1,8 @@
-import { AutoHoldExecutionRecord, SpcAbnormalEvent } from './types';
-import { ruleStorage } from './ruleStorage';
+// 规则的类型定义和存取已搬到 modules/ocap/services/holdRule/（规则配置本体属于OCAP模块，
+// 要被工单建模的批次扣留节点选用）；本文件是自动触发引擎，依赖的 lineageService/batchHoldService
+// 都在 src 下，所以引擎本身留在 src，只跨模块引用规则数据——跟下面对 workOrderService 的引用是同一种模式。
+import { AutoHoldExecutionRecord, SpcAbnormalEvent } from '../../../modules/ocap/services/holdRule/types';
+import { ruleStorage } from '../../../modules/ocap/services/holdRule/ruleStorage';
 import { lineageService } from '../lineage/lineageService';
 import { batchHoldService } from '../batchHold/batchHoldService';
 import { workOrderService } from '../../../modules/ocap/services/workOrderService';

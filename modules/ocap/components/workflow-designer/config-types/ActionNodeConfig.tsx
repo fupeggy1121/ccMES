@@ -7,6 +7,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp, Users, Mail, X, FileText, Externa
 import UserGroupSelector from '../../UserGroupSelector';
 import { useUserGroups } from '../../../hooks/useUserGroups';
 import { useFormTemplates } from '../../../hooks/useFormTemplates';
+import { useHoldRules } from '../../../hooks/useHoldRules';
 import MultiSelectDropdown from '../../MultiSelectDropdown';
 import { availableRoles } from '../../../constants/roles';
 
@@ -24,20 +25,11 @@ interface ActionNodeConfigProps {
   allEdges: RFEdge[];
 }
 
-// 定义预设的扣留规则选项
-const predefinedHoldRules = [
-  { value: '', label: '请选择扣留规则' },
-  { value: 'hold_all_batches_for_review', label: '扣留所有批次，等待人工审核' },
-  { value: 'hold_affected_batches_only', label: '仅扣留受影响批次' },
-  { value: 'hold_and_notify_quality', label: '扣留并通知质量部门' },
-  { value: 'hold_and_start_capa', label: '扣留并启动CAPA流程' },
-  { value: 'hold_until_retest_pass', label: '扣留直至复测通过' },
-];
-
 const ActionNodeConfig: React.FC<ActionNodeConfigProps> = ({ node, onUpdateNode, allEdges }) => {
   const [showGroupSelector, setShowGroupSelector] = useState<'recipients' | 'cc' | null>(null);
   const { userGroups } = useUserGroups();
   const { templates: formTemplates, loading: formTemplatesLoading } = useFormTemplates();
+  const { rules: holdRules } = useHoldRules();
 
   const shouldShowFormTemplate = !['batchHold', 'equipmentDisable', 'notifyPersonnel'].includes(node.data.config?.actionType || '');
 
@@ -266,10 +258,10 @@ const ActionNodeConfig: React.FC<ActionNodeConfigProps> = ({ node, onUpdateNode,
               </select>
             </div>
 
-            {/* 新增：扣留规则配置输入框 */}
+            {/* 扣留规则：引用"扣留规则"管理页里配置的真实规则，而不是写死的策略文案 */}
             {node.data.config?.actionType === 'batchHold' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">扣留规则配置</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">扣留规则</label>
                 <select
                   value={node.data.config?.holdRuleConfig || ''}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -286,13 +278,17 @@ const ActionNodeConfig: React.FC<ActionNodeConfigProps> = ({ node, onUpdateNode,
                     });
                   }}
                 >
-                  {predefinedHoldRules.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
+                  <option value="">不选择（默认扣留当前批次）</option>
+                  {holdRules.map(rule => (
+                    <option key={rule.id} value={rule.id}>
+                      {rule.name}
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">选择批次扣留的具体规则或策略</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  多数正常生产批次留空即可，默认扣留当前批次；仅monitor料号跑批等需要按时间窗口匹配一批生产批次的场景，
+                  才需要在此选择对应配置的扣留规则（可到OCAP菜单下的"扣留规则"页面新增或维护）。
+                </p>
               </div>
             )}
 

@@ -10,8 +10,8 @@ class MemoryLocalStorage {
 (globalThis as any).localStorage = new MemoryLocalStorage();
 
 import { spcAutoHoldService } from './spcAutoHoldService';
-import { ruleStorage } from './ruleStorage';
-import { AutoHoldRule, SpcAbnormalEvent } from './types';
+import { ruleStorage } from '../../../modules/ocap/services/holdRule/ruleStorage';
+import { AutoHoldRule, SpcAbnormalEvent } from '../../../modules/ocap/services/holdRule/types';
 import { batchApiService } from '../../components/BatchOperations/services/batchApiService';
 import { BatchData } from '../../components/BatchOperations/types';
 import { __resetBatchHoldServiceForTests, batchHoldService } from '../batchHold/batchHoldService';

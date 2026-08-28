@@ -1,8 +1,12 @@
+// modules/ocap/pages/HoldRuleManagement.tsx
+// 从 src/components/SpcAutoHoldRules/SpcAutoHoldRulesModule.tsx 搬迁而来：扣留规则作为一种
+// 批次扣留的方式，可以在OCAP工单建模流程的批次扣留节点里选择，所以规则管理页归到OCAP模块菜单下。
 import React, { useEffect, useState } from 'react';
-import { ruleStorage } from '../../services/spcAutoHold/ruleStorage';
-import { spcAutoHoldService } from '../../services/spcAutoHold/spcAutoHoldService';
-import { AutoHoldRule, AutoHoldExecutionRecord, SpcAbnormalEvent } from '../../services/spcAutoHold/types';
-import { batchApiService } from '../BatchOperations/services/batchApiService';
+import { ruleStorage } from '../services/holdRule/ruleStorage';
+import { seedMockRulesIfEmpty } from '../services/holdRule/mockRules';
+import { spcAutoHoldService } from '../../../src/services/spcAutoHold/spcAutoHoldService';
+import { AutoHoldRule, AutoHoldExecutionRecord, SpcAbnormalEvent } from '../services/holdRule/types';
+import { batchApiService } from '../../../src/components/BatchOperations/services/batchApiService';
 
 const emptyRuleForm = (): Omit<AutoHoldRule, 'id' | 'createdAt' | 'createdBy'> => ({
   name: '',
@@ -32,7 +36,7 @@ const emptyEventForm = (): SpcAbnormalEvent => ({
   lastPassedAt: '',
 });
 
-const SpcAutoHoldRulesModule: React.FC = () => {
+const HoldRuleManagement: React.FC = () => {
   const [rules, setRules] = useState<AutoHoldRule[]>([]);
   const [equipmentOptions, setEquipmentOptions] = useState<string[]>([]);
   const [ruleForm, setRuleForm] = useState(emptyRuleForm());
@@ -44,6 +48,8 @@ const SpcAutoHoldRulesModule: React.FC = () => {
   const loadRules = () => setRules(ruleStorage.getRules());
 
   useEffect(() => {
+    // 首次打开、本地还没有任何规则时，种入几条示例规则，方便直接在批次扣留节点里看到真实可选项
+    seedMockRulesIfEmpty();
     loadRules();
     setExecutionRecords(spcAutoHoldService.listExecutionRecords());
     // 机台编码没有独立的主数据服务，只能从批次数据里的 equipmentCode 字段取真实出现过的值去重
@@ -121,7 +127,12 @@ const SpcAutoHoldRulesModule: React.FC = () => {
 
   return (
     <div className="p-6 space-y-8">
-      <h1 className="text-xl font-semibold text-gray-800">SPC自动Hold规则</h1>
+      <h1 className="text-xl font-semibold text-gray-800">扣留规则</h1>
+      <p className="text-sm text-gray-500 -mt-4">
+        正常生产批次的wafer量测数据经SPC检测异常时，默认扣留当前wafer所属批次，无需配置规则；
+        仅针对monitor料号跑批等需要按时间窗口匹配一批生产批次的场景，才需要在此配置扣留规则——
+        配置后可在OCAP工单建模的批次扣留节点中选择对应规则。
+      </p>
 
       {/* 规则列表 + 新建/编辑表单 */}
       <section className="bg-white rounded-lg shadow-sm p-6 space-y-4">
@@ -345,4 +356,4 @@ const SpcAutoHoldRulesModule: React.FC = () => {
   );
 };
 
-export default SpcAutoHoldRulesModule;
+export default HoldRuleManagement;

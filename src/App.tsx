@@ -12,7 +12,6 @@ import { LifetimeControlModeling } from './components/Auxiliary/LifetimeControlM
 import { CleaningRecordsModule } from './components/Carriers/CleaningRecordsModule';
 import FinishedProductInboundModule from './components/FinishedProduct/FinishedProductInboundModule';
 import BatchOperationsModule from './components/BatchOperations/BatchOperationsModule';
-import SpcAutoHoldRulesModule from './components/SpcAutoHoldRules/SpcAutoHoldRulesModule';
 import MRBManagement from './components/MRB/MRBManagement';
 import ProductModelManagement from './components/ProductModel/ProductModelManagement';
 import { OcapApp } from '../modules/ocap';
@@ -115,8 +114,6 @@ function App() {
         return <EquipmentManagement />;
       case 'fragment-management':
         return <BatchOperationsModule />;
-      case 'spc-auto-hold-rules':
-        return <SpcAutoHoldRulesModule />;
       case 'mrb-management':
         return <MRBManagement />;
       case 'product-model-management-external':
@@ -124,6 +121,7 @@ function App() {
       case 'ocap-work-orders':
       case 'ocap-work-order-modeling':
       case 'ocap-form-templates':
+      case 'ocap-hold-rules':
         return <OcapApp activeSubModule={activeSubModule} />;
       default:
         console.warn(`未知的子模块: ${activeSubModule}`);

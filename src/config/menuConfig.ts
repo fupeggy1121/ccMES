@@ -55,7 +55,6 @@ const originalMenuItems: MenuItem[] = [
         icon: Box,
         subItems: [
           { id: 'fragment-management', label: '批次作业', icon: AlertTriangle },
-          { id: 'spc-auto-hold-rules', label: 'SPC自动Hold规则', icon: ShieldAlert },
           { id: 'e-card', label: '批次流水卡', icon: FileText, href: 'https://oqkq2dgk7v34erk4eiqymb4jq.bolt.host' },
           { id: 'operation-log', label: '批次操作履历', icon: FileText, href: 'https://stellar-madeleine-ba4ceb.netlify.app' },
           { id: 'batch-creation', label: '本地批次创建', icon: Send, href: 'https://new-xxzc.bolt.host' },
@@ -175,6 +174,7 @@ const originalMenuItems: MenuItem[] = [
       { id: 'ocap-work-orders', label: '工单管理', icon: ClipboardList },
       { id: 'ocap-work-order-modeling', label: 'OCAP工单建模', icon: Settings },
       { id: 'ocap-form-templates', label: '表单模版管理', icon: FileText },
+      { id: 'ocap-hold-rules', label: '扣留规则', icon: ShieldAlert },
     ],
   },
 ];

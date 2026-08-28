@@ -8,7 +8,7 @@ export const ruleStorage = {
       const data = localStorage.getItem(STORAGE_KEY);
       return data ? JSON.parse(data) : [];
     } catch (error) {
-      console.error('加载SPC自动Hold规则失败:', error);
+      console.error('加载扣留规则失败:', error);
       return [];
     }
   },
@@ -17,7 +17,7 @@ export const ruleStorage = {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
     } catch (error) {
-      console.error('保存SPC自动Hold规则失败:', error);
+      console.error('保存扣留规则失败:', error);
       throw new Error('保存失败，可能是存储空间不足');
     }
   },
