@@ -13,6 +13,7 @@ import { CleaningRecordsModule } from './components/Carriers/CleaningRecordsModu
 import FinishedProductInboundModule from './components/FinishedProduct/FinishedProductInboundModule';
 import BatchOperationsModule from './components/BatchOperations/BatchOperationsModule';
 import BatchHoldSearchModule from './components/BatchHoldSearch/BatchHoldSearchModule';
+import SpcAutoHoldRulesModule from './components/SpcAutoHoldRules/SpcAutoHoldRulesModule';
 import MRBManagement from './components/MRB/MRBManagement';
 import ProductModelManagement from './components/ProductModel/ProductModelManagement';
 import { OcapApp } from '../modules/ocap';
@@ -117,6 +118,8 @@ function App() {
         return <BatchOperationsModule />;
       case 'batch-hold-search':
         return <BatchHoldSearchModule />;
+      case 'spc-auto-hold-rules':
+        return <SpcAutoHoldRulesModule />;
       case 'mrb-management':
         return <MRBManagement />;
       case 'product-model-management-external':
