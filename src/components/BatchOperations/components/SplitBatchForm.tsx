@@ -29,8 +29,7 @@ interface SplitBatchFormProps {
   getSubBatchesForMaster: (masterBatchId: string, allStations: StationData[], parentBatch: BatchData | null) => Promise<SubBatchData[]>;
   getStatusColor: (status: string) => string;
   handleBackToBatchList: () => void;
-  handleConfirmWaferTransfer: (finalTargetCarriers: TargetCarrier[], finalSourceWafers: WaferData[]) => void;
-  onConfirmSplit: (stagingAreaId?: string) => void;
+  onConfirmSplit: (payload: { stagingAreaId?: string; targetCarriers: TargetCarrier[]; targetWafers: WaferData[] }) => Promise<void>;
 }
 
 const SplitBatchForm: React.FC<SplitBatchFormProps> = ({
@@ -39,13 +38,17 @@ const SplitBatchForm: React.FC<SplitBatchFormProps> = ({
   getSubBatchesForMaster,
   getStatusColor,
   handleBackToBatchList,
-  handleConfirmWaferTransfer,
   onConfirmSplit,
 }) => {
   const [sourceCarriersForReorganization, setSourceCarriersForReorganization] = useState<CarrierData[]>([]);
   const [selectedMode, setSelectedMode] = useState<string>('0');
   const [selectedStagingAreaId, setSelectedStagingAreaId] = useState<string>('');
   const [wafersForCurrentForm, setWafersForCurrentForm] = useState<WaferData[]>([]);
+  // 新增：片篮重组的最新结果，确认拆批时随暂存区选择一起提交
+  const [latestReorgResult, setLatestReorgResult] = useState<{ targetCarriers: TargetCarrier[]; targetWafers: WaferData[] }>({
+    targetCarriers: [],
+    targetWafers: [],
+  });
 
   const fetchWafersForSubBatches = useCallback(async (subBatchCodes: string[], batchId: string) => {
     if (subBatchCodes.length === 0) return [];
@@ -107,7 +110,7 @@ const SplitBatchForm: React.FC<SplitBatchFormProps> = ({
         {/* 片篮更换模块 */}
         <WaferBasketReorganizationModule
           initialSourceCarriers={sourceCarriersForReorganization}
-          onReorganizationStateChange={handleConfirmWaferTransfer}
+          onReorganizationStateChange={(targetCarriers, targetWafers) => setLatestReorgResult({ targetCarriers, targetWafers })}
           initialWafers={wafersForCurrentForm}
           disableWaferTypeSelection={true}
           readOnlyWaferDetails={true}
@@ -176,7 +179,11 @@ const SplitBatchForm: React.FC<SplitBatchFormProps> = ({
             关闭
           </button>
           <button
-            onClick={() => onConfirmSplit(selectedStagingAreaId || undefined)}
+            onClick={() => onConfirmSplit({
+              stagingAreaId: selectedStagingAreaId || undefined,
+              targetCarriers: latestReorgResult.targetCarriers,
+              targetWafers: latestReorgResult.targetWafers,
+            })}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             确认拆批

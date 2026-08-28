@@ -243,7 +243,6 @@ function BatchOperationsContent() {
           getSubBatchesForMaster={getSubBatchesForMaster}
           getStatusColor={getStatusColor}
           handleBackToBatchList={handleBackToBatchList}
-          handleConfirmWaferTransfer={handleConfirmWaferTransferFromContext}
           onConfirmSplit={handleConfirmSplitFromContext}
         />
       </BatchOperationModal>

@@ -284,16 +284,25 @@ export const useBatchOperationsHandlers = (
     setCurrentFormType('combineTrayBatch');
   }, [setSelectedBatch, setCurrentFormType]);
 
-  const handleConfirmSplit = useCallback((stagingAreaId?: string) => {
-    if (selectedBatch) {
-      if (stagingAreaId) {
-        console.log('确认拆批并移入暂存区:', selectedBatch.batchCode, '→', stagingAreaId);
-      } else {
-        console.log('确认拆批操作:', selectedBatch.batchCode);
-      }
+  const handleConfirmSplit = useCallback(async (payload: {
+    stagingAreaId?: string;
+    targetCarriers: TargetCarrier[];
+    targetWafers: WaferData[];
+  }) => {
+    if (!selectedBatch) return;
+    try {
+      await batchApiService.confirmSplit(selectedBatch.id, {
+        targetCarriers: payload.targetCarriers,
+        targetWafers: payload.targetWafers,
+        operator: '当前操作人',
+      });
+      await fetchBatches();
       backToBatchList();
+    } catch (err: any) {
+      console.error('Error confirming split:', err.message);
+      throw err;
     }
-  }, [selectedBatch, backToBatchList]);
+  }, [selectedBatch, fetchBatches, backToBatchList]);
 
   const handleConfirmCancelEntry = useCallback(() => {
     if (selectedBatch) {

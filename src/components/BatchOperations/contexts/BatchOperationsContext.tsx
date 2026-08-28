@@ -72,7 +72,7 @@ interface BatchOperationsContextType {
   handlePostEtchInspectionBalance: (batch: BatchData) => Promise<void>;
   handleMeasurementEntry: (batch: BatchData) => Promise<void>;
   handleProcessEntry: (batch: BatchData) => Promise<void>;
-  handleConfirmSplit: (stagingAreaId?: string) => void;
+  handleConfirmSplit: (payload: { stagingAreaId?: string; targetCarriers: TargetCarrier[]; targetWafers: WaferData[] }) => Promise<void>;
   handleConfirmCancelEntry: () => void;
   handleConfirmMergeBatch: () => void;
   handleConfirmWaferTransfer: (finalTargetCarriers: TargetCarrier[], finalSourceWafers: WaferData[]) => void;
