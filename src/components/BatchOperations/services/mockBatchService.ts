@@ -8,7 +8,7 @@
  * 将最后一行 export 改回 batchApiService 即可。
  */
 
-import { BatchData, SubBatchData, WaferData, WaferLossRecord, PackagingRecord } from '../types';
+import { BatchData, SubBatchData, WaferData, WaferLossRecord, PackagingRecord, EquipmentPassEvent } from '../types';
 import { batchList } from '../data/batches';
 import { mockSubBatches } from '../data/mockSubBatches';
 import { mockStations, mockProducts, mockLossWafers, mockWafersBySubBatch } from '../data/mockWafers';
@@ -32,6 +32,8 @@ const _remarks: Record<string, string[]> = {};
 const _history: Record<string, any[]> = {};
 // 包装出货条码记录（按主批次 id 分组）
 const _packagingRecords: Record<string, PackagingRecord[]> = {};
+// 新增：设备出站履历——只追加不覆盖，与 BatchData.lastOutstationAt（单值覆盖）不是一回事
+let _equipmentPassEvents: EquipmentPassEvent[] = [];
 
 export const mockBatchService = {
 
@@ -117,6 +119,22 @@ export const mockBatchService = {
     const subs = _subBatches[batchId] || [];
     const matched = subs.filter(s => subBatchCodes.includes(s.sublotId));
     return matched.flatMap(s => _wafers[s.id] || []);
+  },
+
+
+  /** 新增：查询某机台在时间窗口内的出站履历 */
+  listEquipmentPassEvents: async (
+    equipmentCode: string,
+    timeWindow: { start: string; end: string }
+  ): Promise<EquipmentPassEvent[]> => {
+    await delay();
+    const startMs = new Date(timeWindow.start).getTime();
+    const endMs = new Date(timeWindow.end).getTime();
+    return _equipmentPassEvents.filter(e => {
+      if (e.equipmentCode !== equipmentCode) return false;
+      const t = new Date(e.occurredAt).getTime();
+      return t >= startMs && t <= endMs;
+    });
   },
 
   // ── 写操作 ────────────────────────────────
@@ -237,7 +255,16 @@ export const mockBatchService = {
     await delay();
     const idx = _batches.findIndex(b => b.id === batchId);
     if (idx !== -1) {
-      _batches[idx] = { ..._batches[idx], status: '已出站', lastOutstationAt: new Date().toISOString() };
+      const batch = _batches[idx];
+      _batches[idx] = { ...batch, status: '已出站', lastOutstationAt: new Date().toISOString() };
+      // 新增：追加设备出站履历，只增不改，供 resolveCurrentBatches 回溯窗口查询使用
+      _equipmentPassEvents.push({
+        batchId: batch.id,
+        batchCode: batch.batchCode,
+        equipmentCode: batch.equipmentCode,
+        station: batch.station,
+        occurredAt: new Date().toISOString(),
+      });
     }
     _addHistory(batchId, '出站确认');
     return { success: true };

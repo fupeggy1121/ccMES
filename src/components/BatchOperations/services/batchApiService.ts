@@ -255,6 +255,12 @@ const _realBatchApiService = {
   /**
    * 更新晶圆打标信息
    */
+  /**
+   * 新增：查询设备出站履历
+   */
+  listEquipmentPassEvents: (equipmentCode: string, timeWindow: { start: string; end: string }) =>
+    request(`/equipment/${encodeURIComponent(equipmentCode)}/pass-events?start=${encodeURIComponent(timeWindow.start)}&end=${encodeURIComponent(timeWindow.end)}`),
+
   updateWaferMarking: (waferId: string, markingCode: string, markingStatus: string) =>
     request(`/wafers/${waferId}/marking`, {
       method: 'PUT',
