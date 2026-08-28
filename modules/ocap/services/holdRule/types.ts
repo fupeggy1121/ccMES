@@ -1,4 +1,7 @@
-// src/services/spcAutoHold/types.ts
+// modules/ocap/services/holdRule/types.ts
+// 从 src/services/spcAutoHold/types.ts 搬迁而来：扣留规则的“配置”本体属于 OCAP
+// 模块（要被工单建模里的批次扣留节点选用），自动触发引擎 spcAutoHoldService 仍留在
+// src 下，通过跨模块 import 消费这里的类型。
 
 /** 黑盒触发输入——判异算法本身不在本系统范围内，只消费一个已经判完异的事件 */
 export interface SpcAbnormalEvent {
@@ -12,7 +15,8 @@ export interface SpcAbnormalEvent {
   lastPassedAt?: string;
 }
 
-/** SPC自动Hold规则配置本体 */
+/** 扣留规则配置本体——多数正常生产批次不需要选规则（默认扣留当前wafer所属批次），
+ *  只有monitor料号跑批等窗口内多批次匹配的场景才需要在这里配置规则 */
 export interface AutoHoldRule {
   id: string;
   name: string;

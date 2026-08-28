@@ -11,15 +11,17 @@ import UserGroupManagement from "./pages/UserGroupManagement";
 import FormTemplateManagement from "./pages/FormTemplateManagement";
 import FormTemplateEditor from "./pages/FormTemplateEditor";
 import FormTemplatePreview from "./pages/FormTemplatePreview";
+import HoldRuleManagement from "./pages/HoldRuleManagement";
 import NotFound from "./pages/NotFound";
 
-// 重建（2026-08-27）：宿主左侧菜单里 OCAP 拆成了"工单管理/OCAP工单建模/表单模版管理"三个
-// 子菜单项，点击时宿主会把对应的 activeSubModule 传进来；这里映射到 OCAP 子应用内部的路由，
-// 用于把外层菜单选择同步到内部 MemoryRouter（内部 OcapContentShell 自己的导航条切换不受影响）。
+// 重建（2026-08-27）：宿主左侧菜单里 OCAP 拆成了"工单管理/OCAP工单建模/表单模版管理/扣留规则"
+// 四个子菜单项，点击时宿主会把对应的 activeSubModule 传进来；这里映射到 OCAP 子应用内部的路由，
+// 用于把外层菜单选择同步到内部 MemoryRouter（内部页面跳转跟随，不再有重复的第二套导航条）。
 const OCAP_ROUTE_BY_SUB_MODULE: Record<string, string> = {
   'ocap-work-orders': '/work-orders',
   'ocap-work-order-modeling': '/exceptions',
   'ocap-form-templates': '/form-templates',
+  'ocap-hold-rules': '/hold-rules',
 };
 
 interface OcapAppProps {
@@ -57,6 +59,7 @@ const OcapApp = ({ activeSubModule }: OcapAppProps) => (
         <Route path="form-templates/:id/edit" element={<FormTemplateEditor />} />
         <Route path="form-templates/:id/preview" element={<FormTemplatePreview />} />
         <Route path="form-templates/new" element={<FormTemplateEditor />} />
+        <Route path="hold-rules" element={<HoldRuleManagement />} />
         <Route path="user-groups" element={<UserGroupManagement />} />
       </Route>
       <Route path="*" element={<NotFound />} />
