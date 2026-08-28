@@ -137,6 +137,56 @@ export const mockBatchService = {
     });
   },
 
+  /**
+   * 新增：给定机台+时间窗口，找出该窗口内出站的原始批次，再沿血缘链条正向追踪
+   * 每个 wafer 现在实际所在的批次，去重返回。算法细节见设计 spec 的"resolveCurrentBatches"一节。
+   */
+  resolveCurrentBatches: async (
+    equipmentId: string,
+    timeWindow: { start: string; end: string }
+  ): Promise<BatchData[]> => {
+    await delay();
+    const startMs = new Date(timeWindow.start).getTime();
+    const endMs = new Date(timeWindow.end).getTime();
+
+    // 1. 找出该机台在窗口内出站的原始批次，同一批次多次出站取最早一次（从严圈定）
+    const passedAtByBatchId = new Map<string, number>();
+    _equipmentPassEvents
+      .filter(e => e.equipmentCode === equipmentId)
+      .forEach(e => {
+        const t = new Date(e.occurredAt).getTime();
+        if (t < startMs || t > endMs) return;
+        const existing = passedAtByBatchId.get(e.batchId);
+        if (existing === undefined || t < existing) passedAtByBatchId.set(e.batchId, t);
+      });
+
+    const currentBatchIds = new Set<string>();
+    const allWafers = Object.values(_wafers).flat();
+
+    for (const [originBatchId, passedAt] of passedAtByBatchId.entries()) {
+      // 2a. 仍直接挂在原批次下、从未被移动过的 wafer → 原批次自己命中
+      const originSubs = _subBatches[originBatchId] || [];
+      const stillHasWafers = originSubs.some(s => (_wafers[s.id] || []).some(w => w.waferId));
+      if (stillHasWafers) currentBatchIds.add(originBatchId);
+
+      // 2b. 曾经从原批次移出的 wafer：按离开时间相对 passedAt 的先后判断
+      allWafers.forEach(wafer => {
+        const events = [...(wafer.lineageEvents || [])].sort(
+          (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
+        );
+        const leftOrigin = events.find(e => e.fromBatchId === originBatchId);
+        if (!leftOrigin) return;
+        if (new Date(leftOrigin.occurredAt).getTime() < passedAt) return; // 命中前已经离开，排除
+
+        // 沿该 wafer 后续事件链条追到最后一条的 toBatchId，得到"现在"所在批次
+        const lastEvent = events[events.length - 1];
+        currentBatchIds.add(lastEvent.toBatchId);
+      });
+    }
+
+    return _batches.filter(b => currentBatchIds.has(b.id));
+  },
+
   // ── 写操作 ────────────────────────────────
 
   /** 获取指定主批次的包装出货条码记录 */

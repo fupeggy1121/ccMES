@@ -270,6 +270,15 @@ const _realBatchApiService = {
   listEquipmentPassEvents: (equipmentCode: string, timeWindow: { start: string; end: string }) =>
     request(`/equipment/${encodeURIComponent(equipmentCode)}/pass-events?start=${encodeURIComponent(timeWindow.start)}&end=${encodeURIComponent(timeWindow.end)}`),
 
+  /**
+   * 新增：给定机台+时间窗口，追踪当前风险批次清单
+   */
+  resolveCurrentBatches: (equipmentId: string, timeWindow: { start: string; end: string }) =>
+    request(`/equipment/${encodeURIComponent(equipmentId)}/resolve-current-batches`, {
+      method: 'POST',
+      body: JSON.stringify({ timeWindow }),
+    }),
+
   updateWaferMarking: (waferId: string, markingCode: string, markingStatus: string) =>
     request(`/wafers/${waferId}/marking`, {
       method: 'PUT',
