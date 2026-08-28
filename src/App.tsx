@@ -12,7 +12,6 @@ import { LifetimeControlModeling } from './components/Auxiliary/LifetimeControlM
 import { CleaningRecordsModule } from './components/Carriers/CleaningRecordsModule';
 import FinishedProductInboundModule from './components/FinishedProduct/FinishedProductInboundModule';
 import BatchOperationsModule from './components/BatchOperations/BatchOperationsModule';
-import BatchHoldSearchModule from './components/BatchHoldSearch/BatchHoldSearchModule';
 import SpcAutoHoldRulesModule from './components/SpcAutoHoldRules/SpcAutoHoldRulesModule';
 import MRBManagement from './components/MRB/MRBManagement';
 import ProductModelManagement from './components/ProductModel/ProductModelManagement';
@@ -116,8 +115,6 @@ function App() {
         return <EquipmentManagement />;
       case 'fragment-management':
         return <BatchOperationsModule />;
-      case 'batch-hold-search':
-        return <BatchHoldSearchModule />;
       case 'spc-auto-hold-rules':
         return <SpcAutoHoldRulesModule />;
       case 'mrb-management':
