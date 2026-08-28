@@ -9,18 +9,19 @@ import ParameterSelectionModal from './ParameterSelectionModal';
 import BatchRemarksEditor from './BatchRemarksEditor';
 
 // 导入模拟数据
-import { 
-  mockReworkPaths, 
-  mockReturnStations, 
-  mockEquipmentGroups, 
-  mockRecipes 
+import {
+  mockReworkPaths,
+  mockReturnStations,
+  mockEquipmentGroups,
+  mockRecipes
 } from '../data/reworkPaths';
-import { 
-  mockMeasurementParameters, 
-  mockProcessParameters, 
-  mockSpcParameters 
+import {
+  mockMeasurementParameters,
+  mockProcessParameters,
+  mockSpcParameters
 } from '../data/mockParameters';
 import { useBatchOperations } from '../contexts/BatchOperationsContext';
+import { batchApiService } from '../services/batchApiService';
 
 interface CutIntoSubpathFormProps {
   selectedBatch: BatchData | null;
@@ -37,7 +38,7 @@ const CutIntoSubpathForm: React.FC<CutIntoSubpathFormProps> = ({
   getStatusColor,
   handleBackToBatchList,
 }) => {
-  const { fetchStations } = useBatchOperations();
+  const { fetchStations, fetchBatches } = useBatchOperations();
   const [allStations, setAllStations] = useState<StationData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [productMainPathStations, setProductMainPathStations] = useState<StationData[]>([]);
@@ -215,25 +216,31 @@ const CutIntoSubpathForm: React.FC<CutIntoSubpathFormProps> = ({
   };
 
   // 处理确认切入子路径操作
-  const handleConfirmCutIntoSubpath = () => {
+  const handleConfirmCutIntoSubpath = async () => {
     if (!selectedBatch || !selectedReworkPathId || !selectedReturnStationCode) {
       alert('请选择返工路径和回流站点');
       return;
     }
+    const firstStation = selectedReworkPath?.stations[0];
+    if (!firstStation) {
+      alert('所选返工路径没有配置任何站点，无法切入');
+      return;
+    }
 
-    console.log('确认切入子路径操作:', {
-      sourceBatchCode: selectedBatch.batchCode,
-      selectedReworkPathId: selectedReworkPathId,
-      selectedReworkPathName: selectedReworkPath?.name,
-      configuredStations: configuredStations,
-      selectedReturnStationCode: selectedReturnStationCode,
-      selectedReturnStationName: filteredReturnStations.find(rs => rs.code === selectedReturnStationCode)?.name,
-    });
-
-    // 这里可以添加实际的切入子路径逻辑
-
-    // 完成后返回批次列表
-    handleBackToBatchList();
+    try {
+      await batchApiService.confirmCutIntoSubpath(selectedBatch.id, {
+        reworkPathId: selectedReworkPathId,
+        reworkFirstStationCode: firstStation.stationCode,
+        reworkFirstStationName: firstStation.stationName,
+        returnStationCode: selectedReturnStationCode,
+        operator: '当前操作人',
+      });
+      await fetchBatches();
+      handleBackToBatchList();
+    } catch (err: any) {
+      console.error('Error confirming cut into subpath:', err.message);
+      alert(`切入子路径失败：${err.message}`);
+    }
   };
 
   // 显示加载状态
