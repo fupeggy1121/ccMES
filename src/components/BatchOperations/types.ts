@@ -22,6 +22,12 @@ export interface BatchData {
   ingotId: string; // 晶棒ID
   isSmallBatch: boolean; // 新增：是否小批量
   isHold: boolean; // 新增：是否处于Hold状态
+  /** 新增：本批次已并入的目标批次ID，status='已合批'时必有值，便于UI直接展示"这个批次去哪了" */
+  mergedIntoBatchId?: string;
+  /** 新增：当前所处返工路径ID，非空=正在返工子路径中 */
+  reworkPathId?: string;
+  /** 新增：返工完成后应回流的站点编码 */
+  reworkReturnStationCode?: string;
   defectDisposal?: '返工' | '报废' | '残值回收'; // 不良处置
   ledgerCode?: string; // 台账号（进站设备编号-设备总炉次-备件生命周期炉次）
   lastOutstationAt?: string; // 新增：最近一次出站确认时间（ISO字符串），供批次检索按出站时间范围筛选
@@ -117,7 +123,29 @@ export interface WaferData {
   };
   recycleGrade?: 'A级' | 'B级' | 'C级'; // 回收等级
   defectDisposal?: '返工' | '残值回收' | '报废'; // 不良处置（不良录入专用）
+  /** 新增：血缘事件——仅拆批/合批会追加，返工不产生 */
+  lineageEvents?: LineageEvent[];
   // 注意：根据要求，已移除顶层的 defectType 和 defectCode 字段
+}
+// 新增：wafer 血缘事件——记录一次拆批/合批导致的批次归属变化。
+// 不含 'rework'：返工不改变批次归属（fromBatchId 恒等于 toBatchId），
+// 对血缘正向追踪没有查询价值，改用 BatchData.reworkPathId 等批次级字段表达。
+export interface LineageEvent {
+  eventType: 'split' | 'merge';
+  fromBatchId: string;
+  toBatchId: string;
+  occurredAt: string;
+  operatedBy: string;
+}
+
+// 新增：设备出站履历——只追加不覆盖，用于回答"某机台在某时间窗口内出站过哪些批次"。
+// 与 BatchData.lastOutstationAt（单值覆盖，只保留最近一次）是两回事，不能互相替代。
+export interface EquipmentPassEvent {
+  batchId: string;
+  batchCode: string;
+  equipmentCode: string;
+  station: string;
+  occurredAt: string;
 }
 
 export interface LossWaferData extends WaferData {
