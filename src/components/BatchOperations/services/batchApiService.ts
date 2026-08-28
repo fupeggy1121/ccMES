@@ -201,10 +201,10 @@ const _realBatchApiService = {
   /**
    * 拆批确认
    */
-  confirmSplit: (payload: any) =>
+  confirmSplit: (batchId: string, payload: any) =>
     request('/confirm-split', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ batchId, ...payload }),
     }),
 
   /**

@@ -8,7 +8,7 @@
  * 将最后一行 export 改回 batchApiService 即可。
  */
 
-import { BatchData, SubBatchData, WaferData, WaferLossRecord, PackagingRecord, EquipmentPassEvent } from '../types';
+import { BatchData, SubBatchData, WaferData, WaferLossRecord, PackagingRecord, EquipmentPassEvent, TargetCarrier } from '../types';
 import { batchList } from '../data/batches';
 import { mockSubBatches } from '../data/mockSubBatches';
 import { mockStations, mockProducts, mockLossWafers, mockWafersBySubBatch } from '../data/mockWafers';
@@ -280,11 +280,113 @@ export const mockBatchService = {
     return { success: true };
   },
 
-  /** 拆批确认 */
-  confirmSplit: async (payload: any) => {
+  /**
+   * 拆批确认：真实把选中的晶圆从源批次移出，按目标片篮分组落到一个新建的暂存批次。
+   * 注意：targetWafers 里的 .id 是 WaferBasketReorganizationModule 生成的目标槽位占位 id，
+   * 不是真实晶圆的 id，必须用 waferId 反查 _wafers[] 里的真实记录再移动。
+   */
+  confirmSplit: async (
+    batchId: string,
+    payload: { targetCarriers: TargetCarrier[]; targetWafers: WaferData[]; operator: string }
+  ): Promise<{ success: boolean; newBatchId: string }> => {
     await delay();
-    _addHistory(payload.batchId, '拆批');
-    return { success: true };
+    const sourceIdx = _batches.findIndex(b => b.id === batchId);
+    if (sourceIdx === -1) throw new Error(`批次 ${batchId} 不存在`);
+    const sourceBatch = _batches[sourceIdx];
+    if (sourceBatch.isHold) throw new Error('批次已锁定，无法拆批');
+
+    const sourceSubs = _subBatches[batchId] || [];
+    const waferByWaferId = new Map<string, { wafer: WaferData; subBatchId: string }>();
+    sourceSubs.forEach(sub => {
+      (_wafers[sub.id] || []).forEach(w => {
+        if (w.waferId) waferByWaferId.set(w.waferId, { wafer: w, subBatchId: sub.id });
+      });
+    });
+
+    const occurredAt = new Date().toISOString();
+    const carrierGroups = payload.targetCarriers
+      .map(carrier => {
+        const occupiedSlots = payload.targetWafers.filter(w => w.carrierId === carrier.id && w.waferId);
+        const realWafers = occupiedSlots
+          .map(slot => waferByWaferId.get(slot.waferId))
+          .filter((entry): entry is { wafer: WaferData; subBatchId: string } => Boolean(entry));
+        return { carrier, realWafers };
+      })
+      .filter(group => group.realWafers.length > 0);
+
+    if (carrierGroups.length === 0) {
+      throw new Error('未选中任何晶圆，无法拆批');
+    }
+
+    const movedWaferIds = new Set(carrierGroups.flatMap(g => g.realWafers.map(e => e.wafer.id)));
+    const newBatchId = `batch-${Date.now()}`;
+    const newBatchCode = `${sourceBatch.batchCode}-SPLIT-${Date.now()}`;
+
+    const isGood = (w: WaferData) => w.type === 'GOOD' || w.type === 'GoodSample';
+    const totalQty = carrierGroups.reduce((sum, g) => sum + g.realWafers.length, 0);
+    const goodQty = carrierGroups.reduce((sum, g) => sum + g.realWafers.filter(e => isGood(e.wafer)).length, 0);
+
+    const newBatch: BatchData = {
+      ...sourceBatch,
+      id: newBatchId,
+      batchCode: newBatchCode,
+      status: '暂存',
+      totalQty,
+      goodQty,
+      defectQty: totalQty - goodQty,
+      isHold: false,
+      mergedIntoBatchId: undefined,
+      reworkPathId: undefined,
+      reworkReturnStationCode: undefined,
+    };
+    _batches.push(newBatch);
+    _subBatches[newBatchId] = [];
+
+    carrierGroups.forEach((group, i) => {
+      const newSubBatchId = `${newBatchId}-sub-${i}`;
+      const groupGoodQty = group.realWafers.filter(e => isGood(e.wafer)).length;
+      _subBatches[newBatchId].push({
+        id: newSubBatchId,
+        sublotId: `${newBatchCode}-SUB-${String(i + 1).padStart(2, '0')}`,
+        carrierId: group.carrier.id,
+        totalQty: group.realWafers.length,
+        goodQty: groupGoodQty,
+        defectQty: group.realWafers.length - groupGoodQty,
+        status: '暂存',
+        station: sourceBatch.station,
+        stationName: sourceBatch.stationName,
+        equipment: sourceBatch.equipmentCode,
+      });
+      _wafers[newSubBatchId] = group.realWafers.map(e => ({
+        ...e.wafer,
+        carrierId: group.carrier.id,
+        lineageEvents: [
+          ...(e.wafer.lineageEvents || []),
+          { eventType: 'split' as const, fromBatchId: batchId, toBatchId: newBatchId, occurredAt, operatedBy: payload.operator },
+        ],
+      }));
+    });
+
+    // 源批次：从各自原子批次里剔除已搬走的 wafer，剩余数量重新汇总（不做手工加减）
+    _subBatches[batchId] = sourceSubs.map(sub => {
+      const remaining = (_wafers[sub.id] || []).filter(w => !movedWaferIds.has(w.id));
+      _wafers[sub.id] = remaining;
+      const remainingGood = remaining.filter(isGood).length;
+      return { ...sub, totalQty: remaining.length, goodQty: remainingGood, defectQty: remaining.length - remainingGood };
+    });
+    const sourceRemainingTotal = _subBatches[batchId].reduce((sum, s) => sum + s.totalQty, 0);
+    const sourceRemainingGood = _subBatches[batchId].reduce((sum, s) => sum + s.goodQty, 0);
+    _batches[sourceIdx] = {
+      ...sourceBatch,
+      totalQty: sourceRemainingTotal,
+      goodQty: sourceRemainingGood,
+      defectQty: sourceRemainingTotal - sourceRemainingGood,
+    };
+
+    _addHistory(batchId, `拆批：${totalQty}片移出至暂存批次${newBatchCode}`);
+    _addHistory(newBatchId, `拆批产生（来源批次${sourceBatch.batchCode}）`);
+
+    return { success: true, newBatchId };
   },
 
   /** 并批确认 */
