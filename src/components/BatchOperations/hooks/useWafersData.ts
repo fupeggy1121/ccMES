@@ -19,9 +19,9 @@ export const useWafersData = () => {
       const firstBatch = batchList[0];
       if (!firstBatch?.id) return [];
 
-      // 注意：这里假设 batchApiService.getWafersForSubBatches 返回的是一个 WaferData[]
-      // 如果它返回的是 { data: WaferData[] } 这样的结构，也需要进行调整
-      return await batchApiService.getWafersForSubBatches(subBatchIds, stationCode, firstBatch.id);
+      // 修复：getWafersForSubBatches 从未存在过，正确的方法是 getWaferCarrierContents
+      // （按子批次 uuid 数组直接查 _wafers，mock/real 两边都已实现）
+      return await batchApiService.getWaferCarrierContents(subBatchIds, firstBatch.id);
     } catch (error: any) {
       console.error('Error fetching wafers for sub-batches:', error.message);
       return [];

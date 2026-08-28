@@ -107,7 +107,7 @@ const SplitBatchForm: React.FC<SplitBatchFormProps> = ({
         {/* 片篮更换模块 */}
         <WaferBasketReorganizationModule
           initialSourceCarriers={sourceCarriersForReorganization}
-          onConfirmTransfer={handleConfirmWaferTransfer}
+          onReorganizationStateChange={handleConfirmWaferTransfer}
           initialWafers={wafersForCurrentForm}
           disableWaferTypeSelection={true}
           readOnlyWaferDetails={true}
