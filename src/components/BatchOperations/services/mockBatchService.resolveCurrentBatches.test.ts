@@ -53,11 +53,12 @@ describe('mockBatchService.resolveCurrentBatches', () => {
 
     // 先拆批（此时还没出站，视为"命中前已经离开"）
     const wafersOfA = (await mockBatchService.getBatchWafers(batchA.id, batchA.station)).filter(w => w.waferId);
-    await mockBatchService.confirmSplit(batchA.id, {
+    const preSplitResult = await mockBatchService.confirmSplit(batchA.id, {
       targetCarriers: [{ id: 'SA0200', goodQty: 0, defectQty: 0 }],
       targetWafers: wafersOfA.slice(0, 1).map(w => ({ ...w, id: 'placeholder-1', carrierId: 'SA0200' })),
       operator: 'tester',
     });
+    const splitOffBatchId = preSplitResult.newBatchId;
 
     // 拆批之后才出站——出站事件的时刻晚于 wafer 离开 A 的时刻
     await mockBatchService.confirmOutstation(batchA.id, {});
@@ -74,6 +75,8 @@ describe('mockBatchService.resolveCurrentBatches', () => {
 
     // A 剩余的晶圆仍应命中 A 自己；但那片已经在出站之前就拆走的晶圆所在的新批次不应该被圈入
     // （因为它离开 A 的时间早于这次出站命中的时刻，不算"命中那一刻还在 A 里"）
-    expect(resolved.map(b => b.id)).toContain(batchA.id);
+    const resolvedIds = resolved.map(b => b.id);
+    expect(resolvedIds).toContain(batchA.id);
+    expect(resolvedIds).not.toContain(splitOffBatchId);
   });
 });
