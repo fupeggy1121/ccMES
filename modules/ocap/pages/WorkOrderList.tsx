@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Filter, Plus, AlertTriangle, Clock, CheckCircle, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
-import { mockWorkOrders } from '../data/mockData';
+import { workOrderService } from '../services/workOrderService';
 import StatusBadge from '../components/StatusBadge';
 import FilterDropdown from '../components/FilterDropdown';
 
@@ -10,11 +10,11 @@ const WorkOrderList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [workOrders, setWorkOrders] = useState(mockWorkOrders);
-  const [filteredOrders, setFilteredOrders] = useState(mockWorkOrders);
+  const [workOrders, setWorkOrders] = useState(() => workOrderService.listWorkOrders());
+  const [filteredOrders, setFilteredOrders] = useState(() => workOrderService.listWorkOrders());
   
   useEffect(() => {
-    let filtered = mockWorkOrders;
+    let filtered = workOrders;
     
     if (searchTerm) {
       filtered = filtered.filter(order => 
@@ -33,7 +33,7 @@ const WorkOrderList = () => {
     }
     
     setFilteredOrders(filtered);
-  }, [searchTerm, statusFilter, typeFilter]);
+  }, [workOrders, searchTerm, statusFilter, typeFilter]);
   
   const statusOptions = [
     { value: 'all', label: '全部状态' },
