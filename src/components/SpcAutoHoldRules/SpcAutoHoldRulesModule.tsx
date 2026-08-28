@@ -17,9 +17,15 @@ const emptyRuleForm = (): Omit<AutoHoldRule, 'id' | 'createdAt' | 'createdBy'> =
   enabled: true,
 });
 
+/** datetime-local 控件按本地时区解读值，不能直接塞 toISOString()（那是UTC，会整体偏移时区差） */
+const toDatetimeLocalValue = (d: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 const emptyEventForm = (): SpcAbnormalEvent => ({
   equipmentId: '',
-  occurredAt: new Date().toISOString().slice(0, 16),
+  occurredAt: toDatetimeLocalValue(new Date()),
   parameterName: '',
   monitorType: 'metal-ion',
   judgeResult: 'OOC',
