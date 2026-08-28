@@ -2,24 +2,13 @@
 // 从 src/components/SpcAutoHoldRules/SpcAutoHoldRulesModule.tsx 搬迁而来：扣留规则作为一种
 // 批次扣留的方式，可以在OCAP工单建模流程的批次扣留节点里选择，所以规则管理页归到OCAP模块菜单下。
 import React, { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { ruleStorage } from '../services/holdRule/ruleStorage';
 import { seedMockRulesIfEmpty } from '../services/holdRule/mockRules';
 import { spcAutoHoldService } from '../../../src/services/spcAutoHold/spcAutoHoldService';
 import { AutoHoldRule, AutoHoldExecutionRecord, SpcAbnormalEvent } from '../services/holdRule/types';
 import { batchApiService } from '../../../src/components/BatchOperations/services/batchApiService';
-
-const emptyRuleForm = (): Omit<AutoHoldRule, 'id' | 'createdAt' | 'createdBy'> => ({
-  name: '',
-  equipmentId: '',
-  productCode: '',
-  station: '',
-  monitorType: 'metal-ion',
-  timeWindowMode: 'fixed',
-  fixedWindowHours: 8,
-  responsibleProcessEngineer: '',
-  responsibleQualityEngineer: '',
-  enabled: true,
-});
+import HoldRuleFormModal from '../components/hold-rule/HoldRuleFormModal';
 
 /** datetime-local 控件按本地时区解读值，不能直接塞 toISOString()（那是UTC，会整体偏移时区差） */
 const toDatetimeLocalValue = (d: Date): string => {
@@ -39,8 +28,8 @@ const emptyEventForm = (): SpcAbnormalEvent => ({
 const HoldRuleManagement: React.FC = () => {
   const [rules, setRules] = useState<AutoHoldRule[]>([]);
   const [equipmentOptions, setEquipmentOptions] = useState<string[]>([]);
-  const [ruleForm, setRuleForm] = useState(emptyRuleForm());
-  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<AutoHoldRule | null>(null);
 
   const [eventForm, setEventForm] = useState<SpcAbnormalEvent>(emptyEventForm());
   const [executionRecords, setExecutionRecords] = useState<AutoHoldExecutionRecord[]>([]);
@@ -60,49 +49,30 @@ const HoldRuleManagement: React.FC = () => {
     });
   }, []);
 
-  const handleSaveRule = () => {
-    if (!ruleForm.name || !ruleForm.equipmentId || !ruleForm.monitorType) {
-      alert('请填写规则名称、机台和monitor类型');
-      return;
-    }
-    if (ruleForm.timeWindowMode === 'fixed' && !ruleForm.fixedWindowHours) {
-      alert('固定周期模式需要填写回溯小时数');
-      return;
-    }
-    if (!ruleForm.responsibleProcessEngineer || !ruleForm.responsibleQualityEngineer) {
-      alert('请填写责任工艺工程师和知会质量工程师');
-      return;
-    }
+  const handleOpenCreate = () => {
+    setEditingRule(null);
+    setIsFormOpen(true);
+  };
 
-    if (editingRuleId) {
-      ruleStorage.updateRule(editingRuleId, ruleForm);
+  const handleOpenEdit = (rule: AutoHoldRule) => {
+    setEditingRule(rule);
+    setIsFormOpen(true);
+  };
+
+  const handleSaveRule = (values: Omit<AutoHoldRule, 'id' | 'createdAt' | 'createdBy'>) => {
+    if (editingRule) {
+      ruleStorage.updateRule(editingRule.id, values);
     } else {
       ruleStorage.addRule({
-        ...ruleForm,
+        ...values,
         id: `rule-${Date.now()}`,
         createdAt: new Date().toISOString(),
         createdBy: '当前操作人',
       });
     }
-    setRuleForm(emptyRuleForm());
-    setEditingRuleId(null);
+    setIsFormOpen(false);
+    setEditingRule(null);
     loadRules();
-  };
-
-  const handleEditRule = (rule: AutoHoldRule) => {
-    setEditingRuleId(rule.id);
-    setRuleForm({
-      name: rule.name,
-      equipmentId: rule.equipmentId,
-      productCode: rule.productCode ?? '',
-      station: rule.station ?? '',
-      monitorType: rule.monitorType,
-      timeWindowMode: rule.timeWindowMode,
-      fixedWindowHours: rule.fixedWindowHours,
-      responsibleProcessEngineer: rule.responsibleProcessEngineer,
-      responsibleQualityEngineer: rule.responsibleQualityEngineer,
-      enabled: rule.enabled,
-    });
   };
 
   const handleDeleteRule = (id: string) => {
@@ -134,92 +104,20 @@ const HoldRuleManagement: React.FC = () => {
         配置后可在OCAP工单建模的批次扣留节点中选择对应规则。
       </p>
 
-      {/* 规则列表 + 新建/编辑表单 */}
+      {/* 规则列表 */}
       <section className="bg-white rounded-lg shadow-sm p-6 space-y-4">
-        <h2 className="text-base font-medium text-gray-800">{editingRuleId ? '编辑规则' : '新建规则'}</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <input
-            className="border border-gray-300 rounded px-3 py-2 text-sm"
-            placeholder="规则名称 *"
-            value={ruleForm.name}
-            onChange={e => setRuleForm(f => ({ ...f, name: e.target.value }))}
-          />
-          <select
-            className="border border-gray-300 rounded px-3 py-2 text-sm"
-            value={ruleForm.equipmentId}
-            onChange={e => setRuleForm(f => ({ ...f, equipmentId: e.target.value }))}
-          >
-            <option value="">选择机台 *</option>
-            {equipmentOptions.map(code => (
-              <option key={code} value={code}>{code}</option>
-            ))}
-          </select>
-          <input
-            className="border border-gray-300 rounded px-3 py-2 text-sm"
-            placeholder="产品料号（可选）"
-            value={ruleForm.productCode}
-            onChange={e => setRuleForm(f => ({ ...f, productCode: e.target.value }))}
-          />
-          <input
-            className="border border-gray-300 rounded px-3 py-2 text-sm"
-            placeholder="工序/站点（可选）"
-            value={ruleForm.station}
-            onChange={e => setRuleForm(f => ({ ...f, station: e.target.value }))}
-          />
-          <input
-            className="border border-gray-300 rounded px-3 py-2 text-sm"
-            placeholder="monitor类型 *（如 metal-ion）"
-            value={ruleForm.monitorType}
-            onChange={e => setRuleForm(f => ({ ...f, monitorType: e.target.value }))}
-          />
-          <select
-            className="border border-gray-300 rounded px-3 py-2 text-sm"
-            value={ruleForm.timeWindowMode}
-            onChange={e => setRuleForm(f => ({ ...f, timeWindowMode: e.target.value as 'fixed' | 'back-to-last-pass' }))}
-          >
-            <option value="fixed">固定周期回溯</option>
-            <option value="back-to-last-pass">回溯到上次合格</option>
-          </select>
-          {ruleForm.timeWindowMode === 'fixed' && (
-            <input
-              type="number"
-              className="border border-gray-300 rounded px-3 py-2 text-sm"
-              placeholder="回溯小时数 *"
-              value={ruleForm.fixedWindowHours ?? ''}
-              onChange={e => setRuleForm(f => ({ ...f, fixedWindowHours: Number(e.target.value) }))}
-            />
-          )}
-          <input
-            className="border border-gray-300 rounded px-3 py-2 text-sm"
-            placeholder="责任工艺工程师 *"
-            value={ruleForm.responsibleProcessEngineer}
-            onChange={e => setRuleForm(f => ({ ...f, responsibleProcessEngineer: e.target.value }))}
-          />
-          <input
-            className="border border-gray-300 rounded px-3 py-2 text-sm"
-            placeholder="知会质量工程师 *"
-            value={ruleForm.responsibleQualityEngineer}
-            onChange={e => setRuleForm(f => ({ ...f, responsibleQualityEngineer: e.target.value }))}
-          />
-        </div>
-        <div className="flex gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-medium text-gray-800">规则列表</h2>
           <button
-            className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-            onClick={handleSaveRule}
+            className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+            onClick={handleOpenCreate}
           >
-            {editingRuleId ? '保存修改' : '新建规则'}
+            <Plus size={16} />
+            创建规则
           </button>
-          {editingRuleId && (
-            <button
-              className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50"
-              onClick={() => { setEditingRuleId(null); setRuleForm(emptyRuleForm()); }}
-            >
-              取消编辑
-            </button>
-          )}
         </div>
 
-        <table className="w-full text-sm mt-4">
+        <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-100 text-left">
               <th className="py-2 px-3">规则名称</th>
@@ -243,7 +141,7 @@ const HoldRuleManagement: React.FC = () => {
                 <td className="py-2 px-3">{rule.responsibleProcessEngineer} / {rule.responsibleQualityEngineer}</td>
                 <td className="py-2 px-3">{rule.enabled ? '启用' : '停用'}</td>
                 <td className="py-2 px-3 space-x-2">
-                  <button className="text-blue-600 hover:underline" onClick={() => handleEditRule(rule)}>编辑</button>
+                  <button className="text-blue-600 hover:underline" onClick={() => handleOpenEdit(rule)}>编辑</button>
                   <button className="text-red-600 hover:underline" onClick={() => handleDeleteRule(rule.id)}>删除</button>
                 </td>
               </tr>
@@ -352,6 +250,14 @@ const HoldRuleManagement: React.FC = () => {
           </tbody>
         </table>
       </section>
+
+      <HoldRuleFormModal
+        isOpen={isFormOpen}
+        editingRule={editingRule}
+        equipmentOptions={equipmentOptions}
+        onClose={() => { setIsFormOpen(false); setEditingRule(null); }}
+        onSave={handleSaveRule}
+      />
     </div>
   );
 };
