@@ -12,9 +12,11 @@ const NAV_ITEMS = [
   { to: '/form-templates', icon: FileText, label: '表单模版管理' },
 ];
 
+// 外层必须撑满宿主 <main> 的高度：工作流设计器（ReactFlow 画布）靠 h-full/flex-1 逐层
+// 继承高度，这里如果是默认的 height:auto，画布会塌成 0px（页面下方空白、无法拖拽节点）。
 const OcapContentShell = () => (
-  <div>
-    <nav className="flex space-x-4 px-4 py-2 bg-white border-b border-gray-200">
+  <div className="h-full flex flex-col min-h-0">
+    <nav className="flex space-x-4 px-4 py-2 bg-white border-b border-gray-200 flex-shrink-0">
       {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
         <NavLink
           key={to}
@@ -31,7 +33,10 @@ const OcapContentShell = () => (
         </NavLink>
       ))}
     </nav>
-    <Outlet />
+    {/* min-h-0 让内容区在超长列表时自己滚动，而不是把 flex 容器顶高 */}
+    <div className="flex-1 min-h-0 overflow-auto">
+      <Outlet />
+    </div>
   </div>
 );
 
