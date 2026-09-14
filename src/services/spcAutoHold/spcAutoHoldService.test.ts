@@ -15,6 +15,9 @@ import { AutoHoldRule, SpcAbnormalEvent } from '../../../modules/ocap/services/h
 import { batchApiService } from '../../components/BatchOperations/services/batchApiService';
 import { BatchData } from '../../components/BatchOperations/types';
 import { __resetBatchHoldServiceForTests, batchHoldService } from '../batchHold/batchHoldService';
+import { workOrderService } from '../../../modules/ocap/services/workOrderService';
+import { DEMO_AUTO_HOLD_EQUIPMENT } from '../../components/BatchOperations/data/mockEquipmentPassEvents';
+import { finishedGoodsBatchList } from '../../components/BatchOperations/data/finishedGoodsBatches';
 
 const makeRule = (overrides: Partial<AutoHoldRule> = {}): AutoHoldRule => ({
   id: `rule-${Math.random()}`,
@@ -106,6 +109,68 @@ describe('spcAutoHoldService.handleSpcAbnormalEvent', () => {
 
     const records = await spcAutoHoldService.handleSpcAbnormalEvent(event);
     expect(records.find(r => r.ruleId === rule.id)).toBeUndefined();
+  });
+
+  it('holds only in-process batches and registers finished-goods batches as display-only', async () => {
+    // 出站履历种子数据里 EQ002 的窗口内既有在制批次也有已入库成品批次
+    const rule = makeRule({ equipmentId: DEMO_AUTO_HOLD_EQUIPMENT, monitorType: 'flatness' });
+    ruleStorage.addRule(rule);
+
+    const records = await spcAutoHoldService.handleSpcAbnormalEvent({
+      equipmentId: DEMO_AUTO_HOLD_EQUIPMENT,
+      occurredAt: new Date().toISOString(),
+      parameterName: '平坦度TTV',
+      monitorType: 'flatness',
+      judgeResult: 'OOC',
+    });
+
+    const record = records.find(r => r.ruleId === rule.id)!;
+    expect(record.result).toBe('holdApplied');
+    expect(record.heldBatchIds!.length).toBeGreaterThan(0);
+
+    // 三个成品库批次都应该被圈进来，但都不执行扣留
+    const fgIds = finishedGoodsBatchList.map(b => b.id);
+    expect(record.stockedOnlyBatchIds).toEqual(expect.arrayContaining(fgIds));
+    expect(record.matchedBatchIds.length).toBe(
+      record.heldBatchIds!.length + record.stockedOnlyBatchIds!.length
+    );
+
+    const activeHolds = await batchHoldService.listActiveHoldRecords();
+    fgIds.forEach(id => expect(activeHolds.some(h => h.batchId === id)).toBe(false));
+  });
+
+  it('puts the matched batch list on the generated work order as a batchHold stage', async () => {
+    const rule = makeRule({ equipmentId: DEMO_AUTO_HOLD_EQUIPMENT, monitorType: 'flatness' });
+    ruleStorage.addRule(rule);
+
+    const records = await spcAutoHoldService.handleSpcAbnormalEvent({
+      equipmentId: DEMO_AUTO_HOLD_EQUIPMENT,
+      occurredAt: new Date().toISOString(),
+      parameterName: '平坦度TTV',
+      monitorType: 'flatness',
+      judgeResult: 'OOC',
+    });
+    const record = records.find(r => r.ruleId === rule.id)!;
+
+    const workOrder = workOrderService.listWorkOrders().find(w => w.id === record.workOrderId)!;
+    expect(workOrder).toBeTruthy();
+    const stage = workOrder.stages.find(st => st.actionType === 'batchHold')!;
+    expect(stage).toBeTruthy();
+    // 工单详情页按 slice(0, currentStage + 1) 显示节点，批次扣留节点必须落在可见范围内
+    expect(workOrder.currentStage).toBe(workOrder.stages.length - 1);
+
+    const snapshots = stage.batchHoldExecution!.batches;
+    expect(snapshots.length).toBe(record.matchedBatchIds.length);
+    expect(snapshots.filter(b => b.holdResult === 'held').length).toBe(record.heldBatchIds!.length);
+    const stocked = snapshots.filter(b => b.holdResult === 'stockedOnly');
+    expect(stocked.length).toBe(record.stockedOnlyBatchIds!.length);
+    // 已入库批次展示的是库位/入库时间，不是站点
+    stocked.forEach(b => {
+      expect(b.warehouseLocation).toBeTruthy();
+      expect(b.inboundAt).toBeTruthy();
+      expect(b.stationName).toBeUndefined();
+    });
+    expect(stage.batchHoldExecution!.ruleName).toBe(rule.name);
   });
 
   it('listExecutionRecords accumulates records across calls', async () => {

@@ -8,10 +8,12 @@
  * 将最后一行 export 改回 batchApiService 即可。
  */
 
-import { BatchData, SubBatchData, WaferData, WaferLossRecord, PackagingRecord, EquipmentPassEvent, TargetCarrier } from '../types';
+import { BatchData, SubBatchData, WaferData, WaferLossRecord, PackagingRecord, EquipmentPassEvent, TargetCarrier, FinishedGoodsBatch } from '../types';
 import { batchList } from '../data/batches';
 import { mockSubBatches } from '../data/mockSubBatches';
 import { mockStations, mockProducts, mockLossWafers, mockWafersBySubBatch } from '../data/mockWafers';
+import { finishedGoodsBatchList } from '../data/finishedGoodsBatches';
+import { mockEquipmentPassEvents } from '../data/mockEquipmentPassEvents';
 
 // 简单延迟，模拟网络异步（可设为 0 去除延迟）
 const delay = (ms = 80) => new Promise(resolve => setTimeout(resolve, ms));
@@ -32,8 +34,11 @@ const _remarks: Record<string, string[]> = {};
 const _history: Record<string, any[]> = {};
 // 包装出货条码记录（按主批次 id 分组）
 const _packagingRecords: Record<string, PackagingRecord[]> = {};
-// 新增：设备出站履历——只追加不覆盖，与 BatchData.lastOutstationAt（单值覆盖）不是一回事
-let _equipmentPassEvents: EquipmentPassEvent[] = [];
+// 新增：设备出站履历——只增不改，与 BatchData.lastOutstationAt（单值覆盖）不是一回事。
+// 用种子数据初始化：空履历会让"按机台+时间窗口反查批次"永远命中 0 条，自动批量扣留无法演示。
+let _equipmentPassEvents: EquipmentPassEvent[] = mockEquipmentPassEvents.map(e => ({ ...e }));
+// 新增：已包装完成入成品库的批次——独立于在制批次 _batches，不参与在制清单和在制操作
+const _finishedGoodsBatches: FinishedGoodsBatch[] = finishedGoodsBatchList.map(b => ({ ...b }));
 
 export const mockBatchService = {
 
@@ -185,6 +190,40 @@ export const mockBatchService = {
     }
 
     return _batches.filter(b => currentBatchIds.has(b.id));
+  },
+
+  /**
+   * 新增：给定机台+时间窗口，找出该窗口内在这台机台出站、且现在已经包装完成入成品库的批次。
+   *
+   * 与 resolveCurrentBatches 分成两个方法而不是合并返回：成品库批次已经离开在制流程，
+   * 没有站点/机台/wafer 血缘可追（终态，不再拆批合批），返回类型和可执行的操作都与在制批次
+   * 不同——自动批量扣留对前者执行扣留、对后者只登记"已入库"，调用方需要能区分这两拨批次。
+   */
+  resolveFinishedGoodsBatches: async (
+    equipmentId: string,
+    timeWindow: { start: string; end: string }
+  ): Promise<FinishedGoodsBatch[]> => {
+    await delay();
+    const startMs = new Date(timeWindow.start).getTime();
+    const endMs = new Date(timeWindow.end).getTime();
+
+    const passedBatchIds = new Set(
+      _equipmentPassEvents
+        .filter(e => {
+          if (e.equipmentCode !== equipmentId) return false;
+          const t = new Date(e.occurredAt).getTime();
+          return t >= startMs && t <= endMs;
+        })
+        .map(e => e.batchId)
+    );
+
+    return _finishedGoodsBatches.filter(b => passedBatchIds.has(b.id));
+  },
+
+  /** 新增：查询成品库批次清单（在制批次清单 listBatches 不包含它们） */
+  listFinishedGoodsBatches: async (): Promise<FinishedGoodsBatch[]> => {
+    await delay();
+    return _finishedGoodsBatches.map(b => ({ ...b }));
   },
 
   // ── 写操作 ────────────────────────────────

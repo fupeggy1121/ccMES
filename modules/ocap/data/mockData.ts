@@ -602,5 +602,156 @@ export const mockWorkOrders: WorkOrder[] = [
         config: getWorkflowNodeConfig(acidEtchingWorkflow, "ae-16")
       }
     ]
+  },
+  {
+    // 自动批量扣留触发的工单示例：批次扣留节点带完整的批次清单快照，
+    // 其中在制批次是真正执行了扣留的对象，已包装入成品库的批次只登记"已入库"。
+    // 这张是静态种子工单，方便不跑"扣留规则 > 模拟触发"也能直接看到节点展示效果；
+    // 真实触发生成的工单由 spcAutoHoldService 写入 workOrderService 内存存储。
+    id: "OCAP-AUTO-2026-0912-001",
+    name: "SPC自动Hold：EQ002平坦度Monitor批次窗口扣留",
+    batchNumber: "6个批次（在制3个/已入库3个，详见批次扣留节点）",
+    equipment: "EQ002",
+    productModel: "P004",
+    exceptionType: "SPC OOS/OOC",
+    description: "规则「EQ002平坦度Monitor批次窗口扣留」命中，参数：平坦度TTV，判异结果：OOC",
+    status: "processing",
+    submitter: "SPC自动触发系统",
+    createdAt: "2026-09-12T08:20:00.000Z",
+    currentStage: 1,
+    currentAssignee: {
+      name: "王芳",
+      department: "工艺技术部",
+      role: "工艺工程师"
+    },
+    stages: [
+      {
+        id: "auto-hold-batch-hold",
+        name: "批次扣留",
+        description: "按扣留规则「EQ002平坦度Monitor批次窗口扣留」圈定时间窗口内流经机台EQ002的批次并执行扣留",
+        role: "系统",
+        status: "completed",
+        completedAt: "2026-09-12T08:20:00.000Z",
+        assignee: "SPC自动触发系统",
+        analysis: "平坦度TTV 判异结果 OOC，规则命中 6 个批次",
+        actions: "在制批次 3 个已执行扣留；已包装入成品库批次 3 个仅登记已入库，待质量侧在成品库/出货环节处置",
+        type: "action",
+        actionType: "batchHold",
+        config: {
+          actionType: "batchHold",
+          holdRuleConfig: "rule-mock-eq002-flatness-window",
+          holdRemarks: "SPC自动Hold规则「EQ002平坦度Monitor批次窗口扣留」触发（机台EQ002，OOC）"
+        },
+        batchHoldExecution: {
+          ruleId: "rule-mock-eq002-flatness-window",
+          ruleName: "EQ002平坦度Monitor批次窗口扣留",
+          triggeredByEquipment: "EQ002",
+          monitorType: "flatness",
+          timeWindow: {
+            start: "2026-09-12T00:15:00.000Z",
+            end: "2026-09-12T08:15:00.000Z"
+          },
+          notifiedProcessEngineer: "王芳",
+          notifiedQualityEngineer: "赵敏",
+          batches: [
+            {
+              batchId: "527e34c6-8b7d-4dc4-a69d-6b9224165315",
+              batchCode: "BATCHD7I17K",
+              productCode: "P003",
+              productName: "Product Gamma",
+              quantity: 128,
+              ingotId: "ING005",
+              holdResult: "held",
+              stationName: "几何参数检验",
+              equipmentName: "测试设备",
+              lastOutstationAt: "2026-09-12T02:20:00.000Z",
+              holdAt: "2026-09-12T08:20:00.000Z"
+            },
+            {
+              batchId: "a4a113ab-94fc-4129-96dc-122288fe8f0b",
+              batchCode: "BATCHKMFH6V",
+              productCode: "P006",
+              productName: "Product Zeta",
+              quantity: 275,
+              ingotId: "ING005",
+              holdResult: "held",
+              stationName: "包装",
+              lastOutstationAt: "2026-09-12T05:40:00.000Z",
+              holdAt: "2026-09-12T08:20:00.000Z"
+            },
+            {
+              batchId: "e3f7bb6a-08d1-4ffe-8887-3a7c8cafde44",
+              batchCode: "BATCH52BSCJ",
+              productCode: "P006",
+              productName: "Product Zeta",
+              quantity: 130,
+              ingotId: "ING002",
+              holdResult: "held",
+              stationName: "硬打标",
+              lastOutstationAt: "2026-09-12T06:10:00.000Z",
+              holdAt: "2026-09-12T08:20:00.000Z"
+            },
+            {
+              batchId: "fg-7a1d4c02-9b6e-4f51-8d33-2c61a0f7b5e1",
+              batchCode: "BATCHFG0731",
+              productCode: "P002",
+              productName: "Product Beta",
+              quantity: 296,
+              ingotId: "ING002",
+              holdResult: "stockedOnly",
+              packagingBarcode: "PKG-20260912-0731",
+              warehouseLocation: "成品库 A 区-03-12",
+              inboundAt: "2026-09-12T03:30:00.000Z"
+            },
+            {
+              batchId: "fg-3e58b9d7-41af-4c8a-b0d2-95e7c31684fa",
+              batchCode: "BATCHFG0864",
+              productCode: "P002",
+              productName: "Product Beta",
+              quantity: 288,
+              ingotId: "ING002",
+              holdResult: "stockedOnly",
+              packagingBarcode: "PKG-20260912-0864",
+              warehouseLocation: "成品库 A 区-03-14",
+              inboundAt: "2026-09-12T04:20:00.000Z"
+            },
+            {
+              batchId: "fg-c204f8ab-6d13-4e79-9a55-7b8e0d2f3c46",
+              batchCode: "BATCHFG0912",
+              productCode: "P004",
+              productName: "Product Delta",
+              quantity: 312,
+              ingotId: "ING003",
+              holdResult: "stockedOnly",
+              packagingBarcode: "PKG-20260912-0912",
+              warehouseLocation: "成品库 B 区-01-05",
+              inboundAt: "2026-09-12T05:50:00.000Z"
+            }
+          ]
+        }
+      },
+      {
+        id: "auto-hold-notify",
+        name: "工程异常反馈",
+        description: "通知责任工艺工程师处理，并知会质量工程师",
+        role: "工艺工程师",
+        status: "processing",
+        assignee: "王芳",
+        analysis: "",
+        actions: "",
+        type: "action",
+        actionType: "notifyPersonnel",
+        config: {
+          actionType: "notifyPersonnel",
+          notificationMethods: ["email", "systemMessage"],
+          emailConfig: {
+            subject: "【SPC自动Hold】EQ002平坦度Monitor异常，已扣留3个在制批次",
+            bodyTemplate: "规则「EQ002平坦度Monitor批次窗口扣留」命中6个批次，其中在制3个已扣留、已入库3个仅登记，请确认处置措施。",
+            recipients: ["王芳"],
+            cc: ["赵敏"]
+          }
+        }
+      }
+    ]
   }
 ];

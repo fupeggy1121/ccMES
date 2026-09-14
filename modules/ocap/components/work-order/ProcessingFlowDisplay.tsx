@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { WorkOrder, WorkOrderStage } from '../../types/workOrder';
+import { BatchHoldExecution, WorkOrder, WorkOrderStage } from '../../types/workOrder';
 import StatusBadge from '../StatusBadge';
 import ProcessTimeline from '../ProcessTimeline';
+import { ruleStorage } from '../../services/holdRule/ruleStorage';
 
 interface ProcessingFlowDisplayProps {
   workOrder: WorkOrder;
@@ -48,6 +49,169 @@ const getStageTypeLabel = (stageType?: string): string => {
   };
 
   return stageTypeMap[stageType] || stageType;
+};
+
+// 辅助函数：把建模时选的扣留规则ID换成规则名称（规则存在 OCAP 自己的 ruleStorage 里，同步可读）
+const getHoldRuleLabel = (ruleId?: string): string => {
+  if (!ruleId) return '未选择（默认扣留当前批次）';
+  try {
+    return ruleStorage.getRules().find(r => r.id === ruleId)?.name || ruleId;
+  } catch {
+    return ruleId;
+  }
+};
+
+// 辅助函数：ISO 时间 → 展示格式，无值时给占位符
+const formatDateTime = (value?: string): string => {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : format(date, 'yyyy-MM-dd HH:mm');
+};
+
+// 辅助函数：渲染批次扣留节点的批次清单。
+// 分两张表而不是一张带状态列的表：在制批次是真正被扣留的对象（关心站点/机台/扣留时间），
+// 已入库批次只是登记在案供质量侧到成品库处置（关心库位/出货条码/入库时间），
+// 两拨批次要看的字段几乎不重叠，塞进一张表会有半数单元格是空的。
+const renderBatchHoldBatches = (execution: BatchHoldExecution) => {
+  const batches = execution.batches || [];
+  const heldBatches = batches.filter(b => b.holdResult === 'held');
+  const stockedBatches = batches.filter(b => b.holdResult === 'stockedOnly');
+
+  return (
+    <div className="space-y-4">
+      {/* 规则与触发信息 */}
+      <div className="p-3 bg-gray-50 border border-gray-200 rounded-md grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+        <div>
+          <label className="text-xs font-medium text-gray-500">扣留规则</label>
+          <p className="text-sm text-gray-900">{execution.ruleName || getHoldRuleLabel(execution.ruleId)}</p>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500">触发机台</label>
+          <p className="text-sm text-gray-900">{execution.triggeredByEquipment || '—'}</p>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500">Monitor类型</label>
+          <p className="text-sm text-gray-900">{execution.monitorType || '—'}</p>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500">圈定时间窗口</label>
+          <p className="text-sm text-gray-900">
+            {execution.timeWindow
+              ? `${formatDateTime(execution.timeWindow.start)} ~ ${formatDateTime(execution.timeWindow.end)}`
+              : '—'}
+          </p>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500">责任工艺工程师</label>
+          <p className="text-sm text-gray-900">{execution.notifiedProcessEngineer || '—'}</p>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500">知会质量工程师</label>
+          <p className="text-sm text-gray-900">{execution.notifiedQualityEngineer || '—'}</p>
+        </div>
+      </div>
+
+      {/* 汇总 */}
+      <p className="text-sm text-gray-700">
+        命中批次 <span className="font-medium">{batches.length}</span> 个：在制已扣留
+        <span className="font-medium text-red-600"> {heldBatches.length} </span>个，
+        已入库仅登记<span className="font-medium text-gray-700"> {stockedBatches.length} </span>个
+      </p>
+
+      {/* 在制批次：真正执行了扣留 */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm font-medium text-gray-700">在制批次（已执行扣留）</label>
+          <span className="text-xs text-gray-500">{heldBatches.length} 个</span>
+        </div>
+        {heldBatches.length === 0 ? (
+          <p className="text-sm text-gray-500 py-2">窗口内没有仍在制的批次，在制侧无可扣留对象。</p>
+        ) : (
+          <div className="overflow-x-auto border border-gray-200 rounded-md">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 text-left text-xs text-gray-600">
+                <tr>
+                  <th className="py-2 px-3 font-medium">批次编码</th>
+                  <th className="py-2 px-3 font-medium">料号 / 产品</th>
+                  <th className="py-2 px-3 font-medium">数量</th>
+                  <th className="py-2 px-3 font-medium">当前站点</th>
+                  <th className="py-2 px-3 font-medium">机台</th>
+                  <th className="py-2 px-3 font-medium">扣留时间</th>
+                  <th className="py-2 px-3 font-medium">状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                {heldBatches.map(batch => (
+                  <tr key={batch.batchId} className="border-t border-gray-100">
+                    <td className="py-2 px-3 text-gray-900">{batch.batchCode}</td>
+                    <td className="py-2 px-3 text-gray-700">{batch.productCode} / {batch.productName}</td>
+                    <td className="py-2 px-3 text-gray-700">{batch.quantity}</td>
+                    <td className="py-2 px-3 text-gray-700">{batch.stationName || '—'}</td>
+                    <td className="py-2 px-3 text-gray-700">{batch.equipmentName || '—'}</td>
+                    <td className="py-2 px-3 text-gray-700">{formatDateTime(batch.holdAt)}</td>
+                    <td className="py-2 px-3">
+                      <span className="inline-flex whitespace-nowrap px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                        已扣留
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* 成品库批次：只登记已入库，不执行扣留 */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm font-medium text-gray-700">已包装入成品库批次（仅登记，不执行扣留）</label>
+          <span className="text-xs text-gray-500">{stockedBatches.length} 个</span>
+        </div>
+        {stockedBatches.length === 0 ? (
+          <p className="text-sm text-gray-500 py-2">窗口内没有已包装入库的批次。</p>
+        ) : (
+          <>
+            <div className="overflow-x-auto border border-gray-200 rounded-md">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-left text-xs text-gray-600">
+                  <tr>
+                    <th className="py-2 px-3 font-medium">批次编码</th>
+                    <th className="py-2 px-3 font-medium">料号 / 产品</th>
+                    <th className="py-2 px-3 font-medium">数量</th>
+                    <th className="py-2 px-3 font-medium">出货条码</th>
+                    <th className="py-2 px-3 font-medium">库位</th>
+                    <th className="py-2 px-3 font-medium">入库时间</th>
+                    <th className="py-2 px-3 font-medium">状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stockedBatches.map(batch => (
+                    <tr key={batch.batchId} className="border-t border-gray-100">
+                      <td className="py-2 px-3 text-gray-900">{batch.batchCode}</td>
+                      <td className="py-2 px-3 text-gray-700">{batch.productCode} / {batch.productName}</td>
+                      <td className="py-2 px-3 text-gray-700">{batch.quantity}</td>
+                      <td className="py-2 px-3 text-gray-700">{batch.packagingBarcode || '—'}</td>
+                      <td className="py-2 px-3 text-gray-700">{batch.warehouseLocation || '—'}</td>
+                      <td className="py-2 px-3 text-gray-700">{formatDateTime(batch.inboundAt)}</td>
+                      <td className="py-2 px-3">
+                        <span className="inline-flex whitespace-nowrap px-2 py-0.5 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
+                          已入库
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              这些批次已完成包装入成品库，在制侧没有可扣留对象，需由质量侧在成品库/出货环节另行处置。
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
 };
 
 // 辅助函数：渲染配置信息
@@ -191,9 +355,15 @@ const renderConfigInfo = (config: any, stageType: string) => {
           )}
 
           {config.actionType === 'batchHold' && (
-            <div>
-              <label className="text-sm font-medium text-gray-700">扣留备注</label>
-              <p className="mt-1 text-sm text-gray-900">{config.holdRemarks || '无'}</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700">扣留规则</label>
+                <p className="mt-1 text-sm text-gray-900">{getHoldRuleLabel(config.holdRuleConfig)}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">扣留备注</label>
+                <p className="mt-1 text-sm text-gray-900">{config.holdRemarks || '无'}</p>
+              </div>
             </div>
           )}
 
@@ -429,6 +599,30 @@ const renderNodeExecutionContent = (stage: WorkOrderStage) => {
                 <p className="mt-1 text-sm text-gray-900">{config.sendOvertimeAlert ? '已启用' : '未启用'}</p>
               </div>
             )}
+          </div>
+        );
+        break;
+      case 'batchHold':
+        nodeSpecificDetails = (
+          <div className="space-y-4">
+            <h4 className="text-md font-medium text-gray-900 mb-2">批次扣留动作详情</h4>
+            {stage.batchHoldExecution ? (
+              renderBatchHoldBatches(stage.batchHoldExecution)
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">扣留规则</label>
+                  <p className="mt-1 text-sm text-gray-900">{getHoldRuleLabel(config.holdRuleConfig)}</p>
+                </div>
+                <p className="text-sm text-gray-600">
+                  该节点尚未执行，暂无扣留批次清单。执行后将按所选扣留规则圈定的批次在此展示。
+                </p>
+              </div>
+            )}
+            <div>
+              <label className="text-sm font-medium text-gray-500">扣留备注</label>
+              <p className="mt-1 text-sm text-gray-900">{config.holdRemarks || '无'}</p>
+            </div>
           </div>
         );
         break;

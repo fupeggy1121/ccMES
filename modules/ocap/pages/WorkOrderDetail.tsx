@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ChevronLeft, AlertTriangle } from 'lucide-react';
-import { mockWorkOrders } from '../data/mockData';
+import { workOrderService } from '../services/workOrderService';
 // 导入新的组件
 import WorkOrderBasicInfoCard from '../components/work-order/WorkOrderBasicInfoCard';
 import ExceptionDetailsCard from '../components/work-order/ExceptionDetailsCard';
@@ -13,8 +13,9 @@ const WorkOrderDetail = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // In a real app, we would fetch from an API
-    const foundOrder = mockWorkOrders.find(order => order.id === id);
+    // 从 workOrderService 读而不是直接读静态 mockWorkOrders：自动批量扣留触发生成的工单
+    // 只存在于 workOrderService 的内存存储里，读静态数组会让这类工单打不开（与工单列表一致）
+    const foundOrder = workOrderService.listWorkOrders().find(order => order.id === id);
     
     if (foundOrder) {
       setWorkOrder(foundOrder);

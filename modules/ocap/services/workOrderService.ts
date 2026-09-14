@@ -1,4 +1,4 @@
-import { WorkOrder } from '../types/workOrder';
+import { WorkOrder, WorkOrderStage } from '../types/workOrder';
 import { mockWorkOrders } from '../data/mockData';
 
 // 内存单例，风格对齐 mockBatchService：种子数据浅拷贝成可变数组
@@ -17,7 +17,9 @@ export const workOrderService = {
     return `OCAP-AUTO-${Date.now()}-${_seq}`;
   },
 
-  /** 用指定ID创建一张工单，默认状态为处理中、无当前处理人、无处理阶段 */
+  /** 用指定ID创建一张工单，默认状态为处理中、无当前处理人。
+   *  stages 可选：自动触发的工单需要把"这次扣留了哪些批次"作为节点执行内容带进来，
+   *  不传则与原先一致（无处理阶段）。 */
   createWorkOrder(
     input: {
       name: string;
@@ -27,6 +29,8 @@ export const workOrderService = {
       exceptionType: string;
       description: string;
       submitter: string;
+      stages?: WorkOrderStage[];
+      currentAssignee?: WorkOrder['currentAssignee'];
     },
     id: string
   ): WorkOrder {
@@ -41,9 +45,11 @@ export const workOrderService = {
       status: 'processing',
       submitter: input.submitter,
       createdAt: new Date().toISOString(),
-      currentStage: 0,
-      currentAssignee: null,
-      stages: [],
+      // currentStage 是"当前阶段的下标"，工单详情页按 slice(0, currentStage + 1) 决定
+      // 时间线上显示到哪一节点，所以带阶段创建时要指向最后一个阶段
+      currentStage: input.stages && input.stages.length > 0 ? input.stages.length - 1 : 0,
+      currentAssignee: input.currentAssignee ?? null,
+      stages: input.stages ?? [],
     };
     _workOrders.push(workOrder);
     return workOrder;
