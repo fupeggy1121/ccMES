@@ -31,6 +31,7 @@ export interface WorkflowNodeData {
     testPath?: string;
     holdRule?: string;
     holdRuleConfig?: string; // 新增：扣留规则配置
+    holdRemarks?: string; // 批次扣留节点的扣留备注内容（BatchHoldActionConfig 一直在写，之前漏了类型声明）
     disableReason?: string;
 
     // 流程结束开关

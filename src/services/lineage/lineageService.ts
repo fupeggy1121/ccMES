@@ -1,4 +1,4 @@
-import { BatchData } from '../../components/BatchOperations/types';
+import { BatchData, FinishedGoodsBatch } from '../../components/BatchOperations/types';
 import { batchApiService } from '../../components/BatchOperations/services/batchApiService';
 
 /**
@@ -9,5 +9,17 @@ import { batchApiService } from '../../components/BatchOperations/services/batch
 export const lineageService = {
   resolveCurrentBatches(equipmentId: string, timeWindow: { start: string; end: string }): Promise<BatchData[]> {
     return batchApiService.resolveCurrentBatches(equipmentId, timeWindow);
+  },
+
+  /**
+   * 新增：同一个机台+时间窗口下，已经包装完成入成品库的批次。
+   * 与 resolveCurrentBatches 是两拨不同的批次：前者还在制、可执行扣留，后者已离开在制流程，
+   * 自动批量扣留只登记"已入库"供质量侧到成品库/出货环节处置。
+   */
+  resolveFinishedGoodsBatches(
+    equipmentId: string,
+    timeWindow: { start: string; end: string }
+  ): Promise<FinishedGoodsBatch[]> {
+    return batchApiService.resolveFinishedGoodsBatches(equipmentId, timeWindow);
   },
 };

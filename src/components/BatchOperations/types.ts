@@ -35,6 +35,30 @@ export interface BatchData {
   productCategory?: '测试片' | '正片' | '重掺片'; // 新增：产品分类，供批量解锁按分类筛选
 }
 
+/** 新增：已包装完成入成品库的批次。
+ *  这类批次已经离开在制流程，不出现在"批次作业"的在制批次清单里，也没有可操作的站点/机台，
+ *  因此不复用 BatchData（站点/机台/配方等在制字段对它没有意义）。
+ *  自动批量扣留按机台+时间窗口圈定风险批次时仍需把它们捞出来，但只登记"已入库"供质量侧
+ *  到成品库/出货环节处置，不在 MES 在制侧执行扣留。 */
+export interface FinishedGoodsBatch {
+  id: string;
+  batchCode: string;
+  productCode: string;
+  productName: string;
+  totalQty: number;
+  ingotId: string;
+  /** 包装完成时间 */
+  packagedAt: string;
+  /** 出货条码（=包装条码） */
+  packagingBarcode: string;
+  /** 入库时间 */
+  inboundAt: string;
+  /** 成品库库位 */
+  warehouseLocation: string;
+  customerName?: string;
+  productCategory?: '测试片' | '正片' | '重掺片';
+}
+
 export interface SubBatchData {
   id: string; // 新增：子批次的UUID
   sublotId: string;

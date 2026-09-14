@@ -279,6 +279,19 @@ const _realBatchApiService = {
       body: JSON.stringify({ timeWindow }),
     }),
 
+  /**
+   * 新增：给定机台+时间窗口，查出该窗口内过站、现已包装完成入成品库的批次
+   * （与 resolveCurrentBatches 分开：成品库批次已离开在制流程，只登记展示不执行扣留）
+   */
+  resolveFinishedGoodsBatches: (equipmentId: string, timeWindow: { start: string; end: string }) =>
+    request(`/equipment/${encodeURIComponent(equipmentId)}/resolve-finished-goods-batches`, {
+      method: 'POST',
+      body: JSON.stringify({ timeWindow }),
+    }),
+
+  /** 新增：查询成品库批次清单 */
+  listFinishedGoodsBatches: () => request('/finished-goods-batches'),
+
   updateWaferMarking: (waferId: string, markingCode: string, markingStatus: string) =>
     request(`/wafers/${waferId}/marking`, {
       method: 'PUT',

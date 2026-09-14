@@ -38,9 +38,15 @@ export interface AutoHoldExecutionRecord {
   id: string;
   ruleId: string;
   event: SpcAbnormalEvent;
+  /** 规则圈定的全部批次（在制 + 已入库成品库），即"命中批次" */
   matchedBatchIds: string[];
+  /** 其中真正执行了扣留的在制批次 */
+  heldBatchIds?: string[];
+  /** 其中已包装完成入成品库、只登记"已入库"未执行扣留的批次 */
+  stockedOnlyBatchIds?: string[];
   workOrderId?: string;
   executedAt: string;
-  result: 'holdApplied' | 'noBatchesMatched' | 'missingLastPassedAt';
+  /** noHoldableBatches：圈到了批次，但全都已经入成品库，在制侧没有可扣留对象 */
+  result: 'holdApplied' | 'noBatchesMatched' | 'noHoldableBatches' | 'missingLastPassedAt';
   workOrderCreationFailed?: boolean;
 }

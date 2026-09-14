@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { ruleStorage } from '../services/holdRule/ruleStorage';
-import { seedMockRulesIfEmpty } from '../services/holdRule/mockRules';
+import { seedMockRulesIfMissing } from '../services/holdRule/mockRules';
 import { spcAutoHoldService } from '../../../src/services/spcAutoHold/spcAutoHoldService';
 import { AutoHoldRule, AutoHoldExecutionRecord, SpcAbnormalEvent } from '../services/holdRule/types';
 import { batchApiService } from '../../../src/components/BatchOperations/services/batchApiService';
@@ -37,8 +37,8 @@ const HoldRuleManagement: React.FC = () => {
   const loadRules = () => setRules(ruleStorage.getRules());
 
   useEffect(() => {
-    // 首次打开、本地还没有任何规则时，种入几条示例规则，方便直接在批次扣留节点里看到真实可选项
-    seedMockRulesIfEmpty();
+    // 补齐本地缺失的示例规则，方便直接在批次扣留节点里看到真实可选项
+    seedMockRulesIfMissing();
     loadRules();
     setExecutionRecords(spcAutoHoldService.listExecutionRecords());
     // 机台编码没有独立的主数据服务，只能从批次数据里的 equipmentCode 字段取真实出现过的值去重
