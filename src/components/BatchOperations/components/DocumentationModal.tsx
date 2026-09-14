@@ -102,6 +102,47 @@ const DocumentationModal: React.FC<DocumentationModalProps> = ({ isOpen, onClose
             <li>在右侧目标片篮列表中选择目标片篮（可新增），点击右箭头完成转移。</li>
             <li>可在目标片篮中继续调整晶圆类型和槽位顺序，由 <code>onReorganizationStateChange</code> 回调实时同步给父组件。</li>
           </ol>
+
+          <hr className="my-6 border-gray-200" />
+
+          <h3 className="text-lg font-semibold mb-3">批量扣留 / 批量释放 操作手册</h3>
+          <p className="mb-4">
+            当整批物料因异常需要暂停流转，或风险已排除需要恢复流转时，可以按"加工机台"或"晶棒"批量圈定批次范围，一次性完成扣留（HOLD）或释放，无需逐个批次操作。批次列表页右侧操作面板提供两组相关入口，使用场景不同，操作前请先分清：
+          </p>
+
+          <h4 className="text-md font-semibold mb-2">两种入口的区别：</h4>
+          <ul className="list-disc list-inside mb-4 space-y-1">
+            <li><strong>批量扣留 / 批量释放</strong>（红色/绿色按钮，始终可点击）：无需预先勾选批次，点击后在弹窗内自行按条件检索出目标批次范围，适合"按机台/晶棒圈定一批批次"的场景。</li>
+            <li><strong>批次扣留（N）/ 批次释放（N）</strong>：需要先在批次列表中勾选一个或多个批次（未勾选时按钮为灰色不可点击，N 为已勾选数量），再对这些已勾选批次直接扣留/释放，适合"已经在列表里挑好了具体批次"的场景。</li>
+            <li>两种入口最终会弹出同一套确认弹窗（扣留填写原因，释放填写审批意见），确认逻辑完全一致，仅批次范围的圈定方式不同，产生的扣留/释放记录没有区别。</li>
+          </ul>
+
+          <h4 className="text-md font-semibold mb-2">批量扣留操作步骤：</h4>
+          <ol className="list-decimal list-inside mb-4 space-y-1">
+            <li>点击右侧操作面板中的红色<strong>"批量扣留"</strong>按钮，弹出"批次检索批量扣留"窗口。</li>
+            <li>选择检索方式：<strong>按加工机台</strong>（先选站点，再多选该站点下的机台）或<strong>按晶棒</strong>（多选晶棒ID），二者互斥、只能选一种；可再叠加"出站时间从/到"进一步缩小范围。</li>
+            <li>点击<strong>"检索"</strong>，下方会列出命中的批次（批次编码、机台、晶棒ID、站点、数量、状态、出站时间），其中已处于HOLD状态的批次会带有红色 HOLD 标记。</li>
+            <li>确认范围无误后，点击<strong>"一键批量HOLD（N）"</strong>（N为检索结果数），打开批量扣留确认弹窗；也可先点"导出清单"核对范围。</li>
+            <li>在确认弹窗中填写：<strong>扣留原因分类</strong>（SPC异常 / 客户投诉 / 辅料问题 / 其他）、<strong>扣留原因说明</strong>（必填）、<strong>责任工艺工程师</strong>（必填）、<strong>知会质量工程师</strong>（可选）。</li>
+            <li>点击<strong>"确认扣留"</strong>——扣留操作<strong>无需审批，立即生效</strong>，系统会自动向责任工艺工程师生成一条"工程异常反馈"记录（当前阶段仅结构化留存，不发送真实通知）。</li>
+          </ol>
+
+          <h4 className="text-md font-semibold mb-2">批量释放操作步骤：</h4>
+          <ol className="list-decimal list-inside mb-4 space-y-1">
+            <li>点击右侧操作面板中的绿色<strong>"批量释放"</strong>按钮，弹出"批次检索批量释放"窗口。</li>
+            <li>同样按<strong>加工机台/晶棒</strong> + 出站时间范围检索，还可叠加<strong>产品分类、客户、料号</strong>条件缩小范围；结果只会展示当前<strong>处于HOLD状态</strong>的批次。</li>
+            <li>在结果列表中通过每行前的复选框逐条勾选，或用表头的全选框一次性勾选当前检索结果；切换检索条件不会清空已勾选的批次。</li>
+            <li>点击<strong>"批量释放（N）"</strong>（N为已勾选数量），打开释放确认弹窗。</li>
+            <li>填写<strong>审批意见 / 决议依据</strong>（必填，例如"8.20质量评审会决议，风险已排除"），点击<strong>"确认释放"</strong>完成操作。</li>
+          </ol>
+
+          <h4 className="text-md font-semibold mb-2">常见问题：</h4>
+          <ul className="list-disc list-inside mb-4 space-y-1">
+            <li><strong>"确认扣留/确认释放"按钮为什么点不动？</strong>：扣留原因说明、责任工艺工程师（扣留场景）或审批意见（释放场景）为必填项，留空时按钮保持灰色不可点击。</li>
+            <li><strong>为什么"批量释放"检索出来是空的？</strong>：该弹窗只列出当前处于HOLD状态的批次，若圈定范围内没有已扣留批次，会提示"当前没有符合条件的Hold批次"，请先确认目标批次是否确已被扣留。</li>
+            <li><strong>批量扣留和批次扣留（N）会不会冲突？</strong>：两者是同一套扣留逻辑的不同入口，可按需选择，不会互相冲突。</li>
+            <li><strong>扣留后能直接撤销吗？</strong>：扣留没有独立的撤销入口，需要通过"批量释放"或"批次释放"重新走一遍释放流程并填写审批意见。</li>
+          </ul>
         </div>
       </div>
     </div>
